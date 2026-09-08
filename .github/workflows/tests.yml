@@ -1,0 +1,35 @@
+name: pruebas
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  pruebas:
+    name: Test-Orquesta (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Versión de PowerShell
+        shell: pwsh
+        run: $PSVersionTable.PSVersion.ToString()
+
+      - name: Suite de pruebas (166 aserciones, sin dependencias)
+        shell: pwsh
+        run: ./plugins/orquesta/tests/Test-Orquesta.ps1
+
+      - name: Manifiestos y frontmatter (validación adicional en Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        shell: pwsh
+        run: |
+          Get-ChildItem -Recurse -Include *.json | ForEach-Object { $null = Get-Content $_ -Raw | ConvertFrom-Json; "ok $($_.Name)" }
+          Get-ChildItem plugins/orquesta/agents/*.md, plugins/orquesta/skills/*/SKILL.md | ForEach-Object {
+            if ((Get-Content $_ -TotalCount 1) -ne '---') { throw "$($_.Name): el frontmatter debe empezar en la línea 1" }
+            "ok $($_.Name)"
+          }

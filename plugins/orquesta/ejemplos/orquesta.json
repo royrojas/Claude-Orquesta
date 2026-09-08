@@ -1,0 +1,28 @@
+{
+  "_doc": "Ejemplo de .claude/orquesta.json (proyecto) o ~/.claude/orquesta.json (usuario). Solo poné las claves que cambian; el resto viene de config/orquesta.defaults.json del plugin.",
+
+  "orquestador": { "modelo": "fable" },
+
+  "trabajadores": {
+    "implementador":        { "modelo": "sonnet" },
+    "implementador-senior": { "modelo": "opus" },
+    "revisor":              { "modelo": "fable" },
+    "documentador":         { "modelo": "haiku" }
+  },
+
+  "enrutamiento": {
+    "senior_si": ["migraci", "oracle", "stored procedure", "azure function", "key vault", "concurren"],
+    "max_reintentos_por_tarea": 2
+  },
+
+  "limites": { "max_paralelo": 2 },
+
+  "contexto": {
+    "obsidian": {
+      "carpeta_decisiones": "docs/decisiones",
+      "carpeta_handoffs": "docs/handoffs"
+    }
+  },
+
+  "compuertas": { "arquitecto_no_edita": true }
+}

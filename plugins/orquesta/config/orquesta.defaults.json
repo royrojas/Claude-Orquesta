@@ -1,0 +1,138 @@
+{
+  "_doc": "Config por defecto de orquesta. NO edites este archivo: copiá lo que quieras cambiar a ~/.claude/orquesta.json (para vos, todos los proyectos) o a .claude/orquesta.json (para un proyecto). Se hace merge profundo: defaults <- usuario <- proyecto.",
+  "version": 1,
+  "orquestador": {
+    "modelo": "fable",
+    "_doc": "Modelo con el que debe correr la sesión principal (el arquitecto). El skill no puede cambiar el modelo de la sesión: arrancá con `claude --model fable` o usá /model fable. Si estás en otro modelo, el arquitecto te lo avisa una vez y sigue."
+  },
+  "trabajadores": {
+    "_doc": "Modelo y motor por trabajador. motor: 'claude' (subagente de Claude Code; modelo = haiku | sonnet | opus | fable | inherit | ID completo) o 'codex' (proceso `codex exec` de OpenAI Codex CLI; modelo = el de Codex, vacío = su default). El arquitecto pasa el modelo en cada llamada, así que manda sobre el frontmatter del agente.",
+    "cartografo": {
+      "modelo": "haiku",
+      "motor": "claude",
+      "esfuerzo": "low",
+      "rol": "Reconocimiento de solo lectura (graphify, Obsidian, repo)."
+    },
+    "implementador": {
+      "modelo": "sonnet",
+      "motor": "claude",
+      "esfuerzo": "medium",
+      "rol": "Implementación estándar a partir de un BRIEF."
+    },
+    "implementador-senior": {
+      "modelo": "opus",
+      "motor": "claude",
+      "esfuerzo": "high",
+      "rol": "Tajadas difíciles: migraciones, SQL dual-engine, concurrencia, Azure Functions, Key Vault."
+    },
+    "revisor": {
+      "modelo": "opus",
+      "motor": "claude",
+      "esfuerzo": "high",
+      "rol": "Verificación independiente (ojos frescos, solo lectura + tests)."
+    },
+    "auditor-seguridad": {
+      "modelo": "opus",
+      "motor": "claude",
+      "esfuerzo": "high",
+      "rol": "Auditoría de inyección/secretos en capa de datos y APIs."
+    },
+    "documentador": {
+      "modelo": "sonnet",
+      "motor": "claude",
+      "esfuerzo": "low",
+      "rol": "ADR + handoff en Obsidian, refresco de graphify."
+    }
+  },
+  "motores": {
+    "_doc": "Motores alternativos. Para que un trabajador use Codex: trabajadores.<nombre>.motor = 'codex' y opcionalmente trabajadores.<nombre>.modelo = '<modelo de Codex>'. Requiere Codex CLI instalado y autenticado (`codex login`).",
+    "codex": {
+      "comando": "codex",
+      "modelo": "",
+      "razonamiento": "high",
+      "sandbox": "workspace-write",
+      "salida_estructurada": true,
+      "args_extra": [],
+      "_doc": "comando: ejecutable (o ruta a un .ps1 para pruebas). modelo: '' usa el default de ~/.codex/config.toml. razonamiento: low|medium|high|xhigh (-c model_reasoning_effort). sandbox: read-only | workspace-write | danger-full-access (necesario si `dotnet restore` requiere red dentro del sandbox). args_extra: flags adicionales para `codex exec`. salida_estructurada: true pide a Codex JSON según schemas/reporte.schema.json o revision.schema.json (--output-schema) y lo renderiza al formato REPORTE/REVISIÓN; false = texto libre."
+    }
+  },
+  "enrutamiento": {
+    "_doc": "Señales que mandan una tarea directo al implementador-senior. Comparación por subcadena, sin distinguir mayúsculas, sobre el título+descripción de la tarea.",
+    "senior_si": [
+      "migraci",
+      "oracle",
+      "dual",
+      "sql server y oracle",
+      "concurren",
+      "transacci",
+      "lock",
+      "azure function",
+      "key vault",
+      "managed identity",
+      "autenticaci",
+      "autorizaci",
+      "refactor transversal",
+      "rendimiento",
+      "stored procedure",
+      "procedimiento almacenado"
+    ],
+    "seguridad_si": [
+      "sql",
+      "query",
+      "dapper",
+      "oraclecommand",
+      "sqlcommand",
+      "idbexecutor",
+      "conexion",
+      "secret",
+      "key vault",
+      "token",
+      "auth",
+      "password",
+      "contrase",
+      "api",
+      "endpoint",
+      "input",
+      "entrada"
+    ],
+    "escalado": [
+      "implementador",
+      "implementador-senior",
+      "arquitecto"
+    ],
+    "max_reintentos_por_tarea": 2
+  },
+  "limites": {
+    "max_paralelo": 3,
+    "max_lineas_reporte": 40,
+    "compuerta_delegacion_chars": 1200
+  },
+  "contexto": {
+    "graphify": {
+      "usar": true,
+      "salida": "graphify-out",
+      "actualizar_al_cerrar": true
+    },
+    "obsidian": {
+      "usar": true,
+      "carpeta_decisiones": "docs/decisiones",
+      "carpeta_handoffs": "docs/handoffs",
+      "prefijo_adr": "ADR-",
+      "prefijo_handoff": "HANDOFF-"
+    }
+  },
+  "rutas": {
+    "raiz": ".orquesta",
+    "plan": ".orquesta/PLAN.md",
+    "briefs": ".orquesta/briefs",
+    "reportes": ".orquesta/reportes",
+    "bitacora": ".orquesta/bitacora.jsonl"
+  },
+  "compuertas": {
+    "_doc": "Hooks que hacen cumplir el protocolo. Apagalos con false, o para toda la sesión con la variable de entorno ORQUESTA_GATES=0.",
+    "delegacion": true,
+    "arquitecto_no_edita": true,
+    "cierre": true,
+    "bitacora": true
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "REVISIÓN / AUDITORÍA de orquesta",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["dictamen", "resumen", "criterios", "hallazgos", "comandos", "para_arquitecto"],
+  "properties": {
+    "dictamen": { "type": "string", "enum": ["APROBADO", "RECHAZADO"] },
+    "resumen": { "type": "string" },
+    "criterios": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["numero", "texto", "cumplido", "evidencia"],
+        "properties": {
+          "numero": { "type": "integer" },
+          "texto": { "type": "string" },
+          "cumplido": { "type": "boolean" },
+          "evidencia": { "type": "string" }
+        }
+      }
+    },
+    "hallazgos": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["severidad", "titulo", "detalle", "archivo", "linea_inicio", "linea_fin", "confianza", "recomendacion"],
+        "properties": {
+          "severidad": { "type": "string", "enum": ["critico", "debe", "sugerencia"] },
+          "titulo": { "type": "string" },
+          "detalle": { "type": "string" },
+          "archivo": { "type": "string" },
+          "linea_inicio": { "type": "integer" },
+          "linea_fin": { "type": "integer" },
+          "confianza": { "type": "number", "minimum": 0, "maximum": 1 },
+          "recomendacion": { "type": "string" }
+        }
+      }
+    },
+    "comandos": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["comando", "resultado"],
+        "properties": { "comando": { "type": "string" }, "resultado": { "type": "string" } }
+      }
+    },
+    "para_arquitecto": { "type": "array", "items": { "type": "string" }, "description": "Decisiones del trabajador que hay que ratificar o revertir." }
+  }
+}
