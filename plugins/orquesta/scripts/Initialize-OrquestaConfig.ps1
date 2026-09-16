@@ -15,7 +15,7 @@ param([string]$Cwd = (Get-Location).Path)
 $dir  = Join-Path $Cwd '.claude'
 $ruta = Join-Path $dir 'orquesta.json'
 if (Test-Path -LiteralPath $ruta) {
-    Write-Output "orquesta: ya existe $ruta y no se toca. Editalo a mano; verificá el resultado con /orquesta:estado."
+    Write-Output "orquesta: ya existe ``$ruta`` y no se toca. Editalo a mano; verificá el resultado con /orquesta:estado."
     exit 0
 }
 
@@ -45,7 +45,7 @@ $cfg = [ordered]@{
 New-Item -ItemType Directory -Path $dir -Force | Out-Null
 Set-Content -LiteralPath $ruta -Value ($cfg | ConvertTo-Json -Depth 6) -Encoding UTF8
 
-Write-Output "orquesta: config del proyecto creada en $ruta"
-if ($decisiones) { Write-Output "Obsidian: carpeta_decisiones y carpeta_handoffs pre-llenadas desde CLAUDE.md -> $decisiones" }
+Write-Output "orquesta: config del proyecto creada en ``$ruta``"
+if ($decisiones) { Write-Output "Obsidian: carpeta_decisiones y carpeta_handoffs pre-llenadas desde CLAUDE.md -> ``$decisiones``" }
 else { Write-Output "Obsidian: no encontre una linea '- Decisiones: <ruta absoluta>' en CLAUDE.md; se usan los defaults (docs/decisiones dentro del repo). Agrega carpeta_decisiones/carpeta_handoffs a mano si queres otra carpeta." }
 Write-Output "El resto del archivo son solo _doc: cualquier clave que agregues pisa el default correspondiente. Verifica con /orquesta:estado."

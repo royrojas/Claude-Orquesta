@@ -33,7 +33,7 @@ Linea $pwshEnPath "pwsh en PATH $(if ($pwshEnPath) { '(los hooks lo necesitan)' 
 $hooksPath = Join-Path $root 'hooks/hooks.json'
 $hooksOk = $false; $nHooks = 0
 try { $h = Get-Content -LiteralPath $hooksPath -Raw | ConvertFrom-Json; foreach ($ev in $h.hooks.PSObject.Properties) { $nHooks += @($ev.Value).Count }; $hooksOk = $nHooks -gt 0 } catch { }
-Linea $hooksOk "hooks.json válido ($nHooks compuertas) en $root"
+Linea $hooksOk "hooks.json válido ($nHooks compuertas) en ``$root``"
 $agentes = @(Get-ChildItem (Join-Path $root 'agents') -Filter *.md -ErrorAction SilentlyContinue).Count
 Linea ($agentes -ge 6) "$agentes agentes en agents/"
 $scriptsFaltan = @(@('Gate-Delegacion','Gate-Edicion','Gate-Cierre','Log-Delegacion','Aviso-Sesion','Show-Estado','Initialize-Orquesta','Initialize-OrquestaConfig','Test-Brief','Invoke-Codex') | Where-Object { -not (Test-Path (Join-Path $root "scripts/$_.ps1")) })

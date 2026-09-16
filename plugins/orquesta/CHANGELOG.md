@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.8 — 2026-09-16
+- Rutas de Windows en la salida de `doctor`, `Initialize-Orquesta` e `Initialize-OrquestaConfig`
+  ahora van entre backticks. Claude Code renderiza esa salida como Markdown, y `\_` es un
+  escape: `C:\_RoyRojas\_Programas\...` se mostraba como `C:_RoyRojas_Programas\...` (solo se
+  perdían las barras antes de un guion bajo). Dentro de un code span no se procesan escapes.
+- 1 aserción nueva (214).
+
 ## 1.3.7 — 2026-09-16
 - `init` ya no corre `Show-Estado.ps1` al cerrar: lanzar `pwsh` desde el skill dispara el
   prompt de Claude Code "nested PowerShell process which cannot be validated" (regla de

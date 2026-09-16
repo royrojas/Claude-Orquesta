@@ -347,6 +347,7 @@ Write-Host "`n== 16. Doctor ==" -ForegroundColor Cyan
 $doc = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Doctor-Orquesta.ps1') -Cwd $tmp 2>&1 | Out-String
 Assert ($LASTEXITCODE -eq 0 -and $doc -match 'Doctor orquesta') "doctor corre y devuelve Markdown"
 Assert ($doc -match '✓ scripts completos' -and $doc -match 'hooks.json válido \(5 compuertas\)') "doctor valida scripts y hooks"
+Assert ($doc -match 'hooks.json válido \(5 compuertas\) en `[^`]+`') "las rutas de Windows salen entre backticks (Markdown se come el \ antes de _ si no)"
 Assert ($doc -match 'motor codex' -and $doc -match 'Codex CLI') "doctor detecta que hay trabajadores en codex y lo verifica"
 Assert ($doc -match '✗ el \.claude/orquesta\.json del proyecto redefine motores\.codex\.comando') "doctor avisa que el comando de Codex viene del .claude/orquesta.json del proyecto"
 Assert ($doc -notmatch 'Exception') "doctor sin excepciones en la salida"

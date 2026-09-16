@@ -24,7 +24,7 @@ $reportes = Join-Path $Cwd (Get-Prop $cfg 'rutas.reportes')
 
 if ((Test-Path -LiteralPath $plan) -and -not $Force) {
     $info = Get-PlanInfo -Cwd $Cwd -Config $cfg
-    Write-Output "orquesta: ya existe $plan (estado: $($info.Estado), objetivo: $($info.Objetivo)). Usá -Force para reemplazarlo o archivalo primero (PLAN-<tema>-archivo.md)."
+    Write-Output "orquesta: ya existe ``$plan`` (estado: $($info.Estado), objetivo: $($info.Objetivo)). Usá -Force para reemplazarlo o archivalo primero (PLAN-<tema>-archivo.md)."
     exit 1
 }
 
@@ -61,6 +61,6 @@ $contenido = $tpl.
 
 Set-Content -LiteralPath $plan -Value $contenido -Encoding UTF8
 
-Write-Output "orquesta: PLAN creado en $plan (estado: planificando)."
+Write-Output "orquesta: PLAN creado en ``$plan`` (estado: planificando)."
 Write-Output "Siguiente: completá ## Clarificado, ## Decisiones y ## Tareas; presentá el plan; con el OK del usuario cambiá a 'estado: en-ejecucion'."
-Write-Output "Briefs en $briefs · Reportes en $reportes · Plantillas en $(Join-Path $root 'skills/arquitecto/plantillas')"
+Write-Output "Briefs en ``$briefs`` · Reportes en ``$reportes`` · Plantillas en ``$(Join-Path $root 'skills/arquitecto/plantillas')``"
