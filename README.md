@@ -816,6 +816,7 @@ Dejalo en `en-ejecucion` con las tareas `[x]`; mañana `/orquesta:revisar final`
 | Codex: "not logged in" o `codex` no encontrado | Falta `codex login` o `codex` no está en PATH | `/orquesta:doctor`; `codex login` (o `codex login --device-auth`). |
 | Codex devolvió texto en vez de JSON | El modelo/versión no respetó `--output-schema` | El wrapper cae a texto automáticamente. Si es recurrente, `"salida_estructurada": false`. |
 | Codex falla en `dotnet restore` | El sandbox `workspace-write` bloquea la red | Restaurá antes de delegar, o `"sandbox": "danger-full-access"` en tu máquina. |
+| Codex en Windows reporta `BLOQUEADO` con `CreateProcessWithLogonW failed` en el log | El sandbox `workspace-write` de Codex no puede anidarse dentro del propio sandbox de Claude Code en Windows | Probá `"sandbox": "danger-full-access"` en tu máquina (nunca en CI). Confirmado: con eso el mismo BRIEF corrió bien. |
 | Codex: "not inside a trusted directory / git repo" | El proyecto no es un repo git | El wrapper agrega `--skip-git-repo-check`; mejor `git init`. |
 | El aviso de sesión no aparece | El PLAN está `cerrado` o no existe | Es el comportamiento esperado. |
 | `/orquesta:estado` o `/orquesta:doctor` dicen "(no existe aún)" de una carpeta de Obsidian que sí existe | Configuraste `carpeta_decisiones`/`carpeta_handoffs` como ruta absoluta; hoy se resuelven relativas al repo | Usá una carpeta dentro del repo (o un symlink/junction desde tu vault). El soporte de rutas absolutas está en el backlog. |
