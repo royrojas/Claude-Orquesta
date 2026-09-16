@@ -1,0 +1,40 @@
+{
+  "_doc": "Fable planea/diseña (la sesión), Codex programa y prueba, Opus revisa y audita en subagentes independientes (cambiá 'opus' por 'fable' si querés). Copiar a .claude/orquesta.json (proyecto) o ~/.claude/orquesta.json (usuario). modelo '' = default de ~/.codex/config.toml.",
+  "orquestador": {
+    "modelo": "fable"
+  },
+  "trabajadores": {
+    "cartografo": {
+      "motor": "claude",
+      "modelo": "haiku"
+    },
+    "implementador": {
+      "motor": "codex",
+      "modelo": ""
+    },
+    "implementador-senior": {
+      "motor": "codex",
+      "modelo": ""
+    },
+    "revisor": {
+      "motor": "claude",
+      "modelo": "opus"
+    },
+    "auditor-seguridad": {
+      "motor": "claude",
+      "modelo": "opus"
+    },
+    "documentador": {
+      "motor": "claude",
+      "modelo": "sonnet"
+    }
+  },
+  "motores": {
+    "codex": {
+      "comando": "codex",
+      "sandbox": "workspace-write",
+      "razonamiento": "high",
+      "args_extra": []
+    }
+  }
+}

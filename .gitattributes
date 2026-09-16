@@ -1,0 +1,6 @@
+# Finales de línea consistentes entre Windows y Linux (PowerShell 7 acepta LF en ambos)
+* text=auto eol=lf
+*.ps1 text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.yml text eol=lf

@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "REPORTE de un trabajador de orquesta",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["estado", "resumen", "cambios", "criterios", "pruebas", "dudas", "propuestas", "bloqueo"],
+  "properties": {
+    "estado": { "type": "string", "enum": ["COMPLETADO", "PARCIAL", "BLOQUEADO"] },
+    "resumen": { "type": "string", "description": "Una frase: qué se hizo." },
+    "cambios": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["archivo", "descripcion"],
+        "properties": { "archivo": { "type": "string" }, "descripcion": { "type": "string" } }
+      }
+    },
+    "criterios": {
+      "type": "array",
+      "description": "Uno por criterio de aceptación del BRIEF, en el mismo orden.",
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["numero", "texto", "cumplido", "evidencia"],
+        "properties": {
+          "numero": { "type": "integer" },
+          "texto": { "type": "string" },
+          "cumplido": { "type": "boolean" },
+          "evidencia": { "type": "string", "description": "archivo:línea, salida de comando o nombre de test. Vacío = no verificado." }
+        }
+      }
+    },
+    "pruebas": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["comando", "resultado"],
+        "properties": { "comando": { "type": "string" }, "resultado": { "type": "string" } }
+      }
+    },
+    "dudas": { "type": "array", "items": { "type": "string" } },
+    "propuestas": { "type": "array", "items": { "type": "string" }, "description": "Mejoras detectadas y NO aplicadas." },
+    "bloqueo": { "type": "string", "description": "Si estado=BLOQUEADO: la pregunta exacta para el arquitecto. Si no, cadena vacía." }
+  }
+}
