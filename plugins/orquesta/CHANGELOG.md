@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.2 — 2026-09-16
+- Overrides de modelo por chat: si la frase suena a preferencia permanente ("de ahora en más", "siempre en este proyecto") en vez de puntual, el arquitecto pregunta si la persiste en `.claude/orquesta.json` o `~/.claude/orquesta.json` (merge de solo las claves que cambian, nunca reescribe el archivo entero); sin confirmación explícita queda como override de esa orquestación nada más, como antes.
+- Manual: nueva sección "Ejemplo rápido" al inicio del README (antes del índice) con un JSON real de enrutamiento mixto Claude+Codex. §7/§8: catálogo real de modelos de Codex (`gpt-6-astra`, `gpt-reserve`, `gpt-5.6-sol/terra/luna`, `gpt-5.5`) con para qué sirve cada uno, y la salvedad de que `motores.codex.razonamiento` es una sola clave global (no por trabajador), a diferencia de `modelo` que sí es por rol.
+- 182 aserciones.
+
 ## 1.3.1 — 2026-09-15
 - Config: un trabajador agregado en `.claude/orquesta.json` sin `esfuerzo`/`rol` ya no tumba `Show-Estado` ni `Initialize-Orquesta` (StrictMode). `Get-TrabajadorInfo` compartido: la tabla del PLAN muestra el modelo efectivo también para codex.
 - Arquitecto: regla explícita para `model:` — solo alias del Agent tool; `inherit` → sin `model:`; ID completo → el alias que contiene + aviso. Reintentos con motor codex documentados en el skill y en el checklist de revisión (`-Intento N+1 -Hallazgos`, no `SendMessage`). Preferir la tool PowerShell para los `pwsh`.

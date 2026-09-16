@@ -16,7 +16,45 @@
 
 ---
 
+## Ejemplo rápido
+
+Con el plugin instalado (arriba) y, si vas a usar Codex, `codex login` ya hecho:
+
+1. Arrancás la sesión con el modelo caro como arquitecto — nunca lo cambia el plugin por vos:
+   ```
+   claude --model fable
+   ```
+2. Le pedís algo:
+   ```
+   /orquesta:arquitecto Exportar los cierres de caja a CSV desde el POS
+   ```
+3. El arquitecto manda a `cartografo` a mapear el repo, te hace **una sola ronda** de preguntas, y te presenta un PLAN con las tareas y qué trabajador va a cada una. Vos lo aprobás.
+4. Delega cada tarea al trabajador que corresponda —subagente de Claude o proceso de Codex CLI, según cómo lo configuraste— y cada entrega pasa por un `revisor` independiente antes de marcarse hecha.
+5. Al cerrar: `documentador` deja ADR + HANDOFF en tu Obsidian, y vos hacés el commit (el plugin nunca commitea).
+
+**¿Cómo le decís qué modelo hace cada tarea?** Con un JSON en `.claude/orquesta.json` del proyecto (o `~/.claude/orquesta.json` para todos los tuyos). Ejemplo real, mezclando Claude y Codex — el que revisa nunca es el mismo proveedor que el que implementó:
+
+```json
+{
+  "trabajadores": {
+    "implementador":        { "motor": "codex",  "modelo": "gpt-5.6-terra" },
+    "implementador-senior": { "motor": "codex",  "modelo": "gpt-6-astra" },
+    "revisor":              { "motor": "claude", "modelo": "opus" },
+    "auditor-seguridad":    { "motor": "claude", "modelo": "opus" }
+  },
+  "motores": { "codex": { "razonamiento": "high" } }
+}
+```
+
+(`gpt-5.6-terra` y `gpt-6-astra` son modelos de Codex, no de Claude — la lista vigente puede cambiar, ver [§8](#qué-modelos-de-codex-podés-poner-en-modelo). No hace falta declarar los seis trabajadores: solo las claves que cambiás respecto al default.)
+
+Si preferís decírselo por el chat en vez de un archivo ("usá opus para el revisor en esto"), también funciona — ver [§6](#cambiar-modelos-desde-el-chat). Los seis trabajadores posibles, con sus modelos y herramientas, están en [§7](#7-los-trabajadores). El resto de este manual desglosa cada pieza; seguí por el [tutorial completo](#4-tutorial-tu-primera-orquestación-de-principio-a-fin) o andá directo al índice de abajo.
+
+---
+
 ## Índice
+
+- [Ejemplo rápido](#ejemplo-rápido)
 
 1. [Qué es y qué problema resuelve](#1-qué-es-y-qué-problema-resuelve)
 2. [Conceptos en dos minutos](#2-conceptos-en-dos-minutos)
@@ -368,9 +406,11 @@ Arrancá con `claude --model opus`. `implementador: sonnet` y `cartografo: haiku
 
 Fable como revisor es la máxima exigencia (cuidá la cuota). Las carpetas de Obsidian son relativas al repo. Verificá siempre con `/orquesta:estado`: muestra trabajador → motor → modelo y **de qué archivo sale cada valor**.
 
-### Cambiar modelos sin tocar archivos
+### Cambiar modelos desde el chat
 
-Si en el chat decís "usá opus para todo" o "no gastes Fable en esto", eso manda **durante esa orquestación** y queda anotado en `## Enrutamiento → Overrides` del PLAN. Para hacerlo permanente, a `.claude/orquesta.json`.
+Si en el chat decís "usá opus para todo" o "no gastes Fable en esto", eso manda **durante esa orquestación** y queda anotado en `## Enrutamiento → Overrides` del PLAN — el arquitecto no toca `.claude/orquesta.json` por su cuenta, porque es un archivo compartido y versionado con el proyecto.
+
+Si la frase suena a preferencia permanente ("de ahora en más", "siempre en este proyecto", "cambialo para todos") en vez de puntual, el arquitecto te pregunta si lo persistís: en `.claude/orquesta.json` (este proyecto) o en `~/.claude/orquesta.json` (todos tus proyectos). Con tu confirmación, edita solo las claves que cambian — nunca reescribe el archivo entero. Sin confirmación explícita, queda como override de esa orquestación nada más. Si preferís no esperar la pregunta, seguís pudiendo editar el JSON vos mismo en cualquier momento.
 
 Verificá siempre con `/orquesta:estado` (muestra de qué archivo sale cada valor) y, durante una corrida, con `/tasks` (muestra el modelo real de cada subagente).
 
@@ -390,6 +430,8 @@ Cada rol está definido en `plugins/orquesta/agents/<rol>.md`. Ese mismo texto e
 `implementador`, `implementador-senior` y `revisor` tienen **memoria de agente a nivel proyecto**: aprenden convenciones, comandos de test y trampas del repo entre orquestaciones (Claude Code la guarda bajo `.claude/agent-memory/`).
 
 **Escalado, siempre de ida:** `implementador → implementador-senior → el arquitecto parte la tarea en 2-3 briefs más finos → vuelve al senior`. El arquitecto nunca implementa al escalar: si el senior no pudo, el problema casi siempre está en el BRIEF.
+
+Estos seis son **los únicos trabajadores que existen** — cada uno tiene un agente real en `agents/<rol>.md`; agregar un nombre distinto en la config no crea uno nuevo. Por cada uno elegís `motor` (`claude` o `codex`) y `modelo`; con `motor: claude` el **esfuerzo real está fijo en el agente** (no se configura desde el JSON: la clave `trabajadores.<rol>.esfuerzo` es solo informativa, para lo que muestran `/orquesta:estado` y el PLAN), con `motor: codex` el esfuerzo es la clave `motores.codex.razonamiento` — ver la salvedad en [§8](#8-codex-como-motor).
 
 ## 8. Codex como motor
 
@@ -417,6 +459,21 @@ y en `.claude/orquesta.json`:
 No hace falta poner `"modelo"`: si el trabajador no tiene un modelo de Codex (o tiene un alias de Claude heredado del default), se usa `motores.codex.modelo`, y si ese está vacío, el default de `~/.codex/config.toml`.
 
 `/orquesta:doctor` confirma que encuentra `codex`, su versión y si estás logueado.
+
+### Qué modelos de Codex podés poner en `modelo`
+
+La lista cambia con el tiempo — esta es una foto de lo que había en `~/.codex/models_cache.json` al escribir esto (Codex CLI 0.144.6). Confirmá la vigente con `codex --help`, la carpeta `~/.codex/` o la [documentación de OpenAI](https://developers.openai.com/api/docs/guides/latest-model):
+
+| `modelo` | Qué dice OpenAI que es | Para qué |
+|---|---|---|
+| `gpt-6-astra` | Su modelo más capaz para trabajo complejo y demandante | `implementador-senior`: migraciones, dual-engine, concurrencia |
+| `gpt-reserve` | Código agéntico rápido y económico | trabajo en paralelo/background sin competir por capacidad |
+| `gpt-5.6-sol` | Caballo de batalla confiable para tareas cotidianas | `implementador` estándar, alternativa a terra |
+| `gpt-5.6-terra` | Balanceado para el trabajo diario | `implementador` estándar (suele ser el default de `~/.codex/config.toml`) |
+| `gpt-5.6-luna` | Rápido y económico | triage barato, tareas de solo lectura si algún día pasás el cartógrafo a Codex |
+| `gpt-5.5` | Generación anterior, "probada" | compatibilidad; no es el default recomendado |
+
+**El `razonamiento` (`low`/`medium`/`high`/`xhigh`) es una sola clave global** en `motores.codex`, no por trabajador: si `implementador` e `implementador-senior` corren los dos en Codex, comparten el mismo nivel. Lo que sí es independiente por rol es el `modelo` — por eso la estrategia habitual es diferenciar por modelo (`gpt-5.6-terra` vs `gpt-6-astra`) y dejar el razonamiento en `high` para ambos, en vez de tratar de bajarlo para el implementador estándar.
 
 ### Qué pasa cuando una tarea va a Codex
 
@@ -790,7 +847,7 @@ Claude-Orquesta/
     ├── schemas/           reporte.schema.json · revision.schema.json
     ├── config/orquesta.defaults.json
     ├── ejemplos/          orquesta.json · orquesta-codex.json
-    ├── tests/             Test-Orquesta.ps1 (181 aserciones) · fake-codex.ps1
+    ├── tests/             Test-Orquesta.ps1 (182 aserciones) · fake-codex.ps1
     ├── README.md          ficha técnica del plugin
     └── CHANGELOG.md
 ```

@@ -108,6 +108,7 @@ foreach ($s in Get-ChildItem (Join-Path $Root 'skills') -Directory) {
 }
 $skArq = Get-Content (Join-Path $Root 'skills/arquitecto/SKILL.md') -Raw -Encoding UTF8
 Assert ($skArq -match '`inherit`' -and $skArq -match 'ID completo' -and $skArq -match '-Intento N\+1 -Hallazgos') "arquitecto: regla de model (inherit / ID completo) y reintento codex documentados"
+Assert ($skArq -match 'preferencia permanente' -and $skArq -match 'AskUserQuestion' -and $skArq -match '\.claude/orquesta\.json' -and $skArq -match 'fusion') "arquitecto: pregunta antes de persistir un override permanente en orquesta.json"
 foreach ($t in @('PLAN.md', 'BRIEF.md', 'REPORTE.md', 'ADR.md', 'HANDOFF.md')) { Assert (Test-Path (Join-Path $Root "skills/arquitecto/plantillas/$t")) "plantilla $t existe" }
 foreach ($r in @('enrutamiento.md', 'brief-checklist.md', 'revision-checklist.md')) { Assert (Test-Path (Join-Path $Root "skills/arquitecto/referencias/$r")) "referencia $r existe" }
 
