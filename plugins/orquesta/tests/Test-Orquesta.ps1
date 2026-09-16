@@ -189,6 +189,30 @@ Assert ((Invoke-Hook 'Gate-Edicion.ps1' $w) -eq '') "un subagente sí puede edit
 Assert ((Invoke-Hook 'Gate-Edicion.ps1' (EditReq 'src/Servicio.cs')) -eq '') "estado pausado relaja la compuerta"
 (Get-Content $planPath -Raw) -replace 'estado: pausado', 'estado: en-ejecucion' | Set-Content $planPath -Encoding UTF8
 
+Write-Host "`n== 8b. Obsidian: vault_root y contexto.obsidian.usar ==" -ForegroundColor Cyan
+$vaultTmp = Join-Path ([IO.Path]::GetTempPath()) ("orquesta-vault-" + [Guid]::NewGuid().ToString('N').Substring(0, 8))
+New-Item -ItemType Directory -Path (Join-Path $vaultTmp 'Proyectos/Test/Decisiones') -Force | Out-Null
+Set-Content (Join-Path $vaultTmp 'Proyectos/Test/Decisiones/ADR-1.md') '# nota' -Encoding UTF8
+Set-Content (Join-Path $tmp '.claude/orquesta.json') (@{
+    trabajadores = @{ implementador = @{ modelo = 'opus' } }
+    limites      = @{ max_paralelo = 5 }
+    contexto     = @{ obsidian = @{ vault_root = $vaultTmp; carpeta_decisiones = 'Proyectos/Test/Decisiones'; carpeta_handoffs = 'Proyectos/Test/Decisiones' } }
+} | ConvertTo-Json -Depth 6) -Encoding UTF8
+$estadoVault = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Show-Estado.ps1') -Cwd $tmp | Out-String
+Assert ($estadoVault -match [regex]::Escape('Proyectos/Test/Decisiones') -or $estadoVault -match [regex]::Escape('Proyectos\Test\Decisiones')) "vault_root: Show-Estado resuelve contra el vault, no contra el repo"
+Assert ($estadoVault -match '\(1 notas\)') "vault_root: cuenta la nota real que ya existe en el vault"
+$editVault = @{ session_id = 'test-1'; cwd = $tmp; hook_event_name = 'PreToolUse'; tool_name = 'Edit'; tool_input = @{ file_path = (Join-Path $vaultTmp 'Proyectos/Test/Decisiones/ADR-1.md'); old_string = 'a'; new_string = 'b' } }
+Assert ((Invoke-Hook 'Gate-Edicion.ps1' $editVault) -eq '') "vault_root: Gate-Edicion permite escribir en la carpeta resuelta del vault (fuera del repo)"
+$docVault = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Doctor-Orquesta.ps1') -Cwd $tmp | Out-String
+Assert ($docVault -match '✓ Obsidian: carpeta de decisiones') "vault_root: Doctor también resuelve contra el vault (antes con Join-Path daba ruta inválida)"
+Remove-Item $vaultTmp -Recurse -Force -ErrorAction SilentlyContinue
+Set-Content (Join-Path $tmp '.claude/orquesta.json') '{ "trabajadores": { "implementador": { "modelo": "opus" } }, "limites": { "max_paralelo": 5 }, "contexto": { "obsidian": { "usar": false } } }'
+$estadoOff = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Show-Estado.ps1') -Cwd $tmp | Out-String
+Assert ($estadoOff -match 'Obsidian: desactivado') "contexto.obsidian.usar=false: Show-Estado ahora lo respeta (antes no tenía ningún efecto)"
+$docOff = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Doctor-Orquesta.ps1') -Cwd $tmp | Out-String
+Assert ($docOff -match 'Obsidian: desactivado') "contexto.obsidian.usar=false: Doctor también lo respeta"
+Set-Content (Join-Path $tmp '.claude/orquesta.json') '{ "trabajadores": { "implementador": { "modelo": "opus" } }, "limites": { "max_paralelo": 5 } }'
+
 Write-Host "`n== 9. Compuerta de cierre ==" -ForegroundColor Cyan
 $stop = @{ session_id = 'sesion-42'; cwd = $tmp; hook_event_name = 'Stop'; stop_hook_active = $false; last_assistant_message = 'Listo.' }
 $r = Invoke-Hook 'Gate-Cierre.ps1' $stop

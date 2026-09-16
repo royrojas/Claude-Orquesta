@@ -85,8 +85,12 @@ $gfCmd = $null -ne (Get-Command graphify -ErrorAction SilentlyContinue)
 if ($cfg) {
     $gfDir = Join-Path $Cwd (Get-Prop $cfg 'contexto.graphify.salida')
     $out.Add("- $(if (Test-Path $gfDir) { '✓' } else { '○' }) graphify: $(if (Test-Path $gfDir) { "grafo en $(Get-Prop $cfg 'contexto.graphify.salida')/" + $(if (Test-Path (Join-Path $gfDir 'needs_update')) { ' (desactualizado)' } else { '' }) } else { 'sin grafo en este proyecto' })$(if ($gfCmd) { ' · CLI disponible' } else { ' · CLI no encontrado (opcional)' })")
-    $dec = Join-Path $Cwd (Get-Prop $cfg 'contexto.obsidian.carpeta_decisiones')
-    $out.Add("- $(if (Test-Path $dec) { '✓' } else { '○' }) Obsidian: carpeta de decisiones $(if (Test-Path $dec) { 'existe' } else { 'aún no existe (se crea al cerrar el primer PLAN)' })")
+    if (-not (Get-Prop $cfg 'contexto.obsidian.usar')) {
+        $out.Add("- ○ Obsidian: desactivado (contexto.obsidian.usar: false)")
+    } else {
+        $dec = Resolve-ObsidianPath -Cwd $Cwd -Config $cfg -Valor (Get-Prop $cfg 'contexto.obsidian.carpeta_decisiones')
+        $out.Add("- $(if ($dec -and (Test-Path $dec)) { '✓' } else { '○' }) Obsidian: carpeta de decisiones ``$dec`` $(if ($dec -and (Test-Path $dec)) { 'existe' } else { 'aún no existe (se crea al cerrar el primer PLAN)' })")
+    }
 }
 $gitOk = $false; try { & git -C $Cwd rev-parse --is-inside-work-tree 2>$null | Out-Null; $gitOk = ($LASTEXITCODE -eq 0) } catch { }
 Linea $gitOk "git: $(if ($gitOk) { 'repositorio detectado' } else { 'este directorio no es un repo git (Codex necesitará --skip-git-repo-check; ya lo agrega el wrapper)' })"

@@ -27,12 +27,14 @@ if (-not $path) { exit 0 }
 $rel = (Get-RelativePathSafe -Path "$path" -Base $cwd)
 $relLower = $rel.ToLowerInvariant()
 
+$decRuta = Resolve-ObsidianPath -Cwd $cwd -Config $cfg -Valor (Get-Prop $cfg 'contexto.obsidian.carpeta_decisiones')
+$hndRuta = Resolve-ObsidianPath -Cwd $cwd -Config $cfg -Valor (Get-Prop $cfg 'contexto.obsidian.carpeta_handoffs')
 $permitidos = @(
     (Get-Prop $cfg 'rutas.raiz'),
     '.claude',
     'docs',
-    (Get-Prop $cfg 'contexto.obsidian.carpeta_decisiones'),
-    (Get-Prop $cfg 'contexto.obsidian.carpeta_handoffs')
+    $decRuta,
+    $hndRuta
 ) | Where-Object { $_ } | ForEach-Object { ($_ -replace '\\', '/').Trim('/').ToLowerInvariant() }
 
 foreach ($p in $permitidos) {

@@ -131,7 +131,7 @@ Todo corre **desde la terminal de Claude Code**. Codex, si lo usás, corre como 
 | **PowerShell 7** (`pwsh`) en el PATH | Todas las compuertas y scripts | Windows: `winget install Microsoft.PowerShell` · macOS: `brew install powershell` · Linux: paquete `powershell` |
 | Codex CLI *(opcional)* | Solo si algún trabajador usa `motor: codex` | `npm i -g @openai/codex` y `codex login` |
 | graphify *(opcional)* | Mapa del repo más barato y mejor para el cartógrafo | Ver [graphify](https://github.com/safishamsi/graphify); genera `graphify-out/` |
-| Carpeta de decisiones *(opcional)* | ADR y HANDOFF en tu vault de Obsidian | Una carpeta **relativa al repo**; por defecto `docs/decisiones` y `docs/handoffs`. Rutas absolutas a un vault externo todavía no están soportadas (ver [§16](#16-solución-de-problemas)). |
+| Carpeta de decisiones *(opcional)* | ADR y HANDOFF en tu vault de Obsidian | Por defecto `docs/decisiones`/`docs/handoffs`, dentro del repo. Para un vault externo (fuera del repo, en otra ruta por persona): `contexto.obsidian.vault_root` en tu `~/.claude/orquesta.json` **personal** — ver [§13](#13-graphify-obsidian-y-la-documentación-que-deja). |
 
 Windows con PowerShell 5.1 solo **no alcanza**: los scripts usan sintaxis de PowerShell 7 y `pwsh` tiene que estar en el PATH que ve Claude Code.
 
@@ -309,7 +309,9 @@ La config se resuelve por **merge profundo** de tres archivos; solo escribís la
 | `limites.max_lineas_reporte` | `40` | Tope de un REPORTE; lo largo va a `.orquesta/reportes/`. |
 | `limites.compuerta_delegacion_chars` | `1200` | Cualquier delegación con prompt ≥ esto exige PLAN aunque no sea a un trabajador de orquesta. |
 | `contexto.graphify.usar` / `salida` / `actualizar_al_cerrar` | `true` / `graphify-out` / `true` | Dónde está el grafo y si se refresca al cerrar. |
-| `contexto.obsidian.carpeta_decisiones` / `carpeta_handoffs` / `prefijo_adr` / `prefijo_handoff` | `docs/decisiones` / `docs/handoffs` / `ADR-` / `HANDOFF-` | Dónde y cómo se nombran las notas. Rutas **relativas al repo** (absolutas: todavía no). `contexto.obsidian.usar` existe pero hoy no tiene efecto (reservado). |
+| `contexto.obsidian.usar` | `true` | `false` apaga ADR/HANDOFF por completo: el arquitecto no delega al documentador, `/orquesta:estado`/`/orquesta:doctor` muestran "desactivado". |
+| `contexto.obsidian.vault_root` | `""` | Ruta absoluta a tu vault. Va en `~/.claude/orquesta.json` (**personal**, nunca en el del proyecto). Ver [§13](#13-graphify-obsidian-y-la-documentación-que-deja). |
+| `contexto.obsidian.carpeta_decisiones` / `carpeta_handoffs` / `prefijo_adr` / `prefijo_handoff` | `docs/decisiones` / `docs/handoffs` / `ADR-` / `HANDOFF-` | Dónde y cómo se nombran las notas. Si ya son una ruta absoluta, se usan tal cual; si no, y hay `vault_root`, se resuelven contra el vault; si no, contra el repo. |
 | `rutas.raiz` / `plan` / `briefs` / `reportes` / `bitacora` | `.orquesta/...` | Ubicación de los artefactos en el proyecto. |
 | `compuertas.delegacion` / `arquitecto_no_edita` / `cierre` / `bitacora` | `true` | Apagar compuertas individualmente. |
 
@@ -404,7 +406,7 @@ Arrancá con `claude --model opus`. `implementador: sonnet` y `cartografo: haiku
 }
 ```
 
-Fable como revisor es la máxima exigencia (cuidá la cuota). Las carpetas de Obsidian son relativas al repo. Verificá siempre con `/orquesta:estado`: muestra trabajador → motor → modelo y **de qué archivo sale cada valor**.
+Fable como revisor es la máxima exigencia (cuidá la cuota). Verificá siempre con `/orquesta:estado`: muestra trabajador → motor → modelo y **de qué archivo sale cada valor**, y la línea "Obsidian: decisiones `<ruta>`" ya resuelta (ver §13 si usás un vault externo).
 
 ### Cambiar modelos desde el chat
 
@@ -735,7 +737,22 @@ Si existe `graphify-out/` (lo genera `/graphify .`), el cartógrafo lee `GRAPH_R
 
 ### Obsidian (salida)
 
-Al cerrar un PLAN, el documentador escribe en las carpetas configuradas (por defecto `docs/decisiones` y `docs/handoffs`). Hoy tienen que ser **relativas al repo**: si tu vault está fuera, apuntá una carpeta del vault al repo (symlink/junction) o esperá al soporte de rutas absolutas, que está en el backlog.
+Al cerrar un PLAN, el documentador escribe en las carpetas configuradas (por defecto `docs/decisiones` y `docs/handoffs`, dentro del repo).
+
+**Si tu vault está fuera del repo** (el caso normal — cada persona del equipo lo tiene en una ruta distinta de su disco), no pongas esa ruta en el `.claude/orquesta.json` del proyecto: ese archivo se versiona y se comparte, y tu ruta personal no le sirve a nadie más. En cambio:
+
+1. En tu `~/.claude/orquesta.json` **personal** (nunca en el del proyecto), declarás dónde está tu vault:
+   ```json
+   { "contexto": { "obsidian": { "vault_root": "C:\\_RoyRojas\\ObsidianVault\\Cerebro" } } }
+   ```
+2. En el `.claude/orquesta.json` **del proyecto** (compartible, no expone tu disco), declarás la subcarpeta relativa a *cualquier* vault:
+   ```json
+   { "contexto": { "obsidian": { "carpeta_decisiones": "Proyectos/MiProyecto/Decisiones", "carpeta_handoffs": "Proyectos/MiProyecto/Decisiones" } } }
+   ```
+
+`carpeta_decisiones`/`carpeta_handoffs` se resuelven así: si ya son una ruta absoluta, se usan tal cual; si no, y hay `vault_root` seteado, se resuelven contra el vault; si no hay ninguno de los dos, contra el repo (el default). Así cada persona en el equipo apunta a su propio vault sin tocar el archivo compartido, y alguien sin vault de Obsidian simplemente sigue usando `docs/decisiones` dentro del repo. `contexto.obsidian.usar: false` apaga esto por completo (el arquitecto ni delega al documentador).
+
+Tu vault no tiene por qué separar "Handoffs" de "Decisiones": si tu estructura solo tiene una carpeta de decisiones (por ejemplo la que arma el skill `configurar-proyecto`, con `Decisiones/` y `Hallazgos/`, sin `Handoffs/`), apuntá `carpeta_handoffs` a la misma carpeta que `carpeta_decisiones` — se distinguen igual por el prefijo del nombre de archivo (`ADR-` vs `HANDOFF-`).
 
 **`docs/decisiones/ADR-20260908-export-csv-cierres.md`**
 ```markdown
@@ -819,7 +836,7 @@ Dejalo en `en-ejecucion` con las tareas `[x]`; mañana `/orquesta:revisar final`
 | Codex en Windows reporta `BLOQUEADO` con `CreateProcessWithLogonW failed` en el log | El sandbox `workspace-write` de Codex no puede anidarse dentro del propio sandbox de Claude Code en Windows | Probá `"sandbox": "danger-full-access"` en tu máquina (nunca en CI). Confirmado: con eso el mismo BRIEF corrió bien. |
 | Codex: "not inside a trusted directory / git repo" | El proyecto no es un repo git | El wrapper agrega `--skip-git-repo-check`; mejor `git init`. |
 | El aviso de sesión no aparece | El PLAN está `cerrado` o no existe | Es el comportamiento esperado. |
-| `/orquesta:estado` o `/orquesta:doctor` dicen "(no existe aún)" de una carpeta de Obsidian que sí existe | Configuraste `carpeta_decisiones`/`carpeta_handoffs` como ruta absoluta; hoy se resuelven relativas al repo | Usá una carpeta dentro del repo (o un symlink/junction desde tu vault). El soporte de rutas absolutas está en el backlog. |
+| `/orquesta:estado` o `/orquesta:doctor` dicen "(no existe aún)" de una carpeta de Obsidian que sí existe en tu vault | No configuraste `contexto.obsidian.vault_root`, así que `carpeta_decisiones`/`carpeta_handoffs` se resuelven contra el repo (el default), no contra tu vault | Poné `vault_root` en tu `~/.claude/orquesta.json` **personal** (nunca en el del proyecto) — ver [§13](#13-graphify-obsidian-y-la-documentación-que-deja). |
 | La delegación falla con un error de validación del parámetro `model` | Configuraste un ID completo (`claude-sonnet-5`) y el arquitecto lo pasó tal cual (plugin anterior a 1.3.1) | El Agent tool solo acepta `haiku`/`sonnet`/`opus`/`fable`. Desde 1.3.1 el arquitecto lo reduce al alias y omite `model:` con `inherit`; actualizá el plugin y, mejor, usá alias en la config. |
 | El badge del README sale gris | El workflow no corrió aún o el nombre del repo cambió | Mirá la pestaña Actions. |
 
@@ -848,7 +865,7 @@ Claude-Orquesta/
     ├── schemas/           reporte.schema.json · revision.schema.json
     ├── config/orquesta.defaults.json
     ├── ejemplos/          orquesta.json · orquesta-codex.json
-    ├── tests/             Test-Orquesta.ps1 (185 aserciones) · fake-codex.ps1
+    ├── tests/             Test-Orquesta.ps1 (191 aserciones) · fake-codex.ps1
     ├── README.md          ficha técnica del plugin
     └── CHANGELOG.md
 ```

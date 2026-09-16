@@ -115,10 +115,12 @@
     },
     "obsidian": {
       "usar": true,
+      "vault_root": "",
       "carpeta_decisiones": "docs/decisiones",
       "carpeta_handoffs": "docs/handoffs",
       "prefijo_adr": "ADR-",
-      "prefijo_handoff": "HANDOFF-"
+      "prefijo_handoff": "HANDOFF-",
+      "_doc": "usar=false apaga ADR/HANDOFF por completo (Show-Estado/Doctor lo muestran como 'desactivado', el arquitecto no delega al documentador). vault_root: ruta absoluta a tu vault de Obsidian — va en ~/.claude/orquesta.json (PERSONAL, nunca en el .claude/orquesta.json del proyecto, que se comparte con el equipo). Si está seteado, carpeta_decisiones/carpeta_handoffs (si NO son ya absolutas) se resuelven relativas a vault_root en vez de al repo — así el proyecto declara algo compartible como 'Proyectos/MiProyecto/Decisiones' y cada persona lo resuelve contra su propio vault. Si carpeta_decisiones/carpeta_handoffs ya son una ruta absoluta, se usan tal cual y vault_root se ignora."
     }
   },
   "rutas": {

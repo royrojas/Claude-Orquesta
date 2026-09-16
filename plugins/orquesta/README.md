@@ -147,7 +147,7 @@ PLAN y briefs **sí** se versionan: son la trazabilidad. Para un plan nuevo, arc
 ## Integración con graphify y Obsidian
 
 - Si existe `graphify-out/`, el cartógrafo lee `GRAPH_REPORT.md`/`wiki/index.md` y corre `graphify query` antes de tocar el código; si hay `needs_update`, te avisa. Al cerrar, el documentador corre `graphify update .` (`contexto.graphify.actualizar_al_cerrar`).
-- Las notas van a `contexto.obsidian.carpeta_decisiones` y `carpeta_handoffs` (por defecto `docs/decisiones`, `docs/handoffs`) con prefijos `ADR-`/`HANDOFF-`. Si tu vault usa otra estructura, cambialo en `.claude/orquesta.json`.
+- Las notas van a `contexto.obsidian.carpeta_decisiones` y `carpeta_handoffs` (por defecto `docs/decisiones`, `docs/handoffs`) con prefijos `ADR-`/`HANDOFF-`. Para un vault fuera del repo, `vault_root` va en tu `~/.claude/orquesta.json` **personal** (no en el del proyecto) — ver el manual raíz, §13. `contexto.obsidian.usar: false` lo apaga entero.
 - Si el proyecto no tiene grafo, `/orquesta:estado` te sugiere correr `/graphify .` (o tu propia skill de setup de proyecto) primero.
 
 ## Estructura del plugin
@@ -175,7 +175,7 @@ plugins/orquesta/
 pwsh -NoProfile -File plugins/orquesta/tests/Test-Orquesta.ps1
 ```
 
-185 aserciones sin dependencias: JSON de manifiestos y hooks, frontmatter de agentes y skills, sintaxis de todos los scripts, merge de config, y cada compuerta alimentada con el JSON que Claude Code manda por stdin (deny/allow/block/nudge, `agent_id`, `stop_hook_active`, `ORQUESTA_GATES`), más el motor Codex contra un `codex` falso (compuertas, flags, REPORTE, thread_id, resume, tokens), la validación de forma de BRIEFs, el aviso de sesión, la salida estructurada (JSON → REPORTE/REVISIÓN) y el doctor.
+191 aserciones sin dependencias: JSON de manifiestos y hooks, frontmatter de agentes y skills, sintaxis de todos los scripts, merge de config, y cada compuerta alimentada con el JSON que Claude Code manda por stdin (deny/allow/block/nudge, `agent_id`, `stop_hook_active`, `ORQUESTA_GATES`), más el motor Codex contra un `codex` falso (compuertas, flags, REPORTE, thread_id, resume, tokens), la validación de forma de BRIEFs, el aviso de sesión, la salida estructurada (JSON → REPORTE/REVISIÓN) y el doctor.
 
 El repo trae un workflow de GitHub Actions (`.github/workflows/tests.yml`) que corre la misma suite en **windows-latest y ubuntu-latest** en cada push. Es la prueba en Windows que no se puede hacer desde Linux: rutas con `\`, shims `.cmd`, finales de línea.
 

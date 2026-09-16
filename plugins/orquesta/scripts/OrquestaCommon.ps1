@@ -227,6 +227,27 @@ function Get-PlanInfo {
     return [pscustomobject]$info
 }
 
+function Resolve-ObsidianPath {
+    <#
+      Resuelve `contexto.obsidian.carpeta_decisiones` / `carpeta_handoffs` a una ruta absoluta o
+      relativa al cwd, en ese orden de prioridad:
+        1. Si el valor ya es una ruta absoluta (vos la configuraste así), se usa tal cual.
+        2. Si `contexto.obsidian.vault_root` está seteado (normalmente en ~/.claude/orquesta.json,
+           personal — nunca en el .claude/orquesta.json del proyecto, que se comparte con el equipo),
+           el valor se resuelve relativo a esa raíz. Así el proyecto declara "Proyectos/X/Decisiones"
+           (compartible, no expone tu disco) y cada persona en el equipo lo resuelve contra SU propio
+           vault sin tocar el archivo versionado.
+        3. Si no hay vault_root, se resuelve relativo a $Cwd (default: docs/decisiones, dentro del repo).
+      Devuelve $null si $Valor está vacío.
+    #>
+    param([string]$Cwd, $Config, [string]$Valor)
+    if ([string]::IsNullOrWhiteSpace($Valor)) { return $null }
+    if ([IO.Path]::IsPathRooted($Valor)) { return $Valor }
+    $vaultRoot = "$(Get-Prop $Config 'contexto.obsidian.vault_root')"
+    if ($vaultRoot) { return (Join-Path $vaultRoot $Valor) }
+    return (Join-Path $Cwd $Valor)
+}
+
 function Get-RelativePathSafe {
     # Ruta relativa normalizada con '/' respecto a $Base; si no está bajo $Base devuelve la absoluta normalizada.
     param([string]$Path, [string]$Base)

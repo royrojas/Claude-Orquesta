@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.3.4 — 2026-09-16
+- **Rutas absolutas de Obsidian, arregladas de raíz.** `Join-Path` no soportaba un hijo
+  absoluto (`Show-Estado.ps1`/`Doctor-Orquesta.ps1` armaban una ruta inválida y decían "no
+  existe" aunque la carpeta estuviera ahí). Nuevo `Resolve-ObsidianPath` compartido en
+  `OrquestaCommon.ps1`, usado también por `Gate-Edicion.ps1`.
+- **`contexto.obsidian.vault_root`** (nuevo, personal — va en `~/.claude/orquesta.json`, nunca
+  en el del proyecto): si está seteado, `carpeta_decisiones`/`carpeta_handoffs` (cuando no son
+  ya absolutas) se resuelven contra el vault en vez de contra el repo. El `.claude/orquesta.json`
+  del proyecto puede declarar algo compartible como `"Proyectos/MiProyecto/Decisiones"` sin
+  exponer la ruta en disco de nadie; cada persona del equipo lo resuelve contra su propio vault.
+- **`contexto.obsidian.usar` ya tiene efecto** (antes existía en la config pero ningún script lo
+  leía): `false` apaga ADR/HANDOFF por completo — el arquitecto no delega al documentador,
+  `/orquesta:estado`/`/orquesta:doctor` muestran "desactivado".
+- Encontrado en un proyecto real (AI Monitor) al probar la orquestación completa: la config no
+  sobreescribía `carpeta_decisiones`, así que usaba el default (`docs/decisiones`, dentro del
+  repo) mientras las notas reales vivían en el vault — exactamente el caso que resuelve
+  `vault_root`.
+- 6 aserciones nuevas (191).
+
 ## 1.3.3 — 2026-09-16
 - Arquitecto: al cerrar el PLAN, ahora le pasa al `documentador` las rutas **resueltas y
   literales** de `contexto.obsidian.carpeta_decisiones`/`carpeta_handoffs` en vez de "las

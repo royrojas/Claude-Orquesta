@@ -62,10 +62,14 @@ if ((Get-Prop $cfg 'contexto.graphify.usar') -and (Test-Path -LiteralPath $gfDir
 } else {
     $out.Add("graphify: no hay ``$(Get-Prop $cfg 'contexto.graphify.salida')/`` → el cartógrafo trabaja con grep/glob; considerá /graphify . (o tu skill de setup de proyecto)")
 }
-$dec = Join-Path $Cwd (Get-Prop $cfg 'contexto.obsidian.carpeta_decisiones')
-$hnd = Join-Path $Cwd (Get-Prop $cfg 'contexto.obsidian.carpeta_handoffs')
-$nDec = if (Test-Path -LiteralPath $dec) { @(Get-ChildItem -LiteralPath $dec -Filter '*.md' -File -ErrorAction SilentlyContinue).Count } else { -1 }
-$out.Add("Obsidian: decisiones ``$(Get-Prop $cfg 'contexto.obsidian.carpeta_decisiones')/`` $(if ($nDec -ge 0) {"($nDec notas)"} else {'(no existe aún)'}) · handoffs ``$(Get-Prop $cfg 'contexto.obsidian.carpeta_handoffs')/`` $(if (Test-Path -LiteralPath $hnd) {'(existe)'} else {'(no existe aún)'})")
+if (-not (Get-Prop $cfg 'contexto.obsidian.usar')) {
+    $out.Add("Obsidian: desactivado (contexto.obsidian.usar: false)")
+} else {
+    $dec = Resolve-ObsidianPath -Cwd $Cwd -Config $cfg -Valor (Get-Prop $cfg 'contexto.obsidian.carpeta_decisiones')
+    $hnd = Resolve-ObsidianPath -Cwd $Cwd -Config $cfg -Valor (Get-Prop $cfg 'contexto.obsidian.carpeta_handoffs')
+    $nDec = if ($dec -and (Test-Path -LiteralPath $dec)) { @(Get-ChildItem -LiteralPath $dec -Filter '*.md' -File -ErrorAction SilentlyContinue).Count } else { -1 }
+    $out.Add("Obsidian: decisiones ``$dec/`` $(if ($nDec -ge 0) {"($nDec notas)"} else {'(no existe aún)'}) · handoffs ``$hnd/`` $(if ($hnd -and (Test-Path -LiteralPath $hnd)) {'(existe)'} else {'(no existe aún)'})")
+}
 try {
     $branch = (& git -C $Cwd rev-parse --abbrev-ref HEAD 2>$null)
     if ($LASTEXITCODE -eq 0 -and $branch) {
