@@ -8,7 +8,8 @@
 /plugin marketplace add royrojas/Claude-Orquesta
 /plugin install orquesta@orquesta
 /reload-plugins
-/orquesta:doctor
+/orquesta:init          ← en cada proyecto, la primera vez: crea la config y te pregunta los modelos
+/orquesta:doctor        ← siempre después de init: valida lo que quedó
 /orquesta:arquitecto Exportar los cierres de caja a CSV desde el POS
 ```
 
@@ -20,9 +21,11 @@
 
 Con el plugin instalado (arriba) y, si vas a usar Codex, `codex login` ya hecho. No hace falta Obsidian ni graphify: son opcionales, y sin ellos las notas de cierre quedan dentro del repo.
 
-1. Arrancás la sesión con el modelo caro como arquitecto — nunca lo cambia el plugin por vos:
+1. Arrancás la sesión con el modelo caro como arquitecto — nunca lo cambia el plugin por vos — y, la primera vez en un proyecto, creás la config y validás, **siempre en este orden**:
    ```
    claude --model fable
+   /orquesta:init        ← crea .claude/orquesta.json y te pregunta los modelos (si ya existe, no lo toca)
+   /orquesta:doctor      ← valida el entorno con esa config
    ```
 2. Le pedís algo:
    ```
@@ -146,7 +149,7 @@ Dentro de Claude Code:
 /orquesta:doctor
 ```
 
-`/orquesta:doctor` te dice si `pwsh` está, si los hooks cargaron, qué motores tenés configurados y qué falta. Corré siempre esto después de instalar.
+`/orquesta:doctor` te dice si `pwsh` está, si los hooks cargaron, qué motores tenés configurados y qué falta. Corré siempre esto después de instalar. Y en cada proyecto, el orden es fijo: **`/orquesta:init` → `/orquesta:doctor`** — init crea la config (es idempotente: si ya existe no la toca), doctor valida lo que quedó. Al revés te confunde: doctor te reporta una config que init está a punto de cambiar.
 
 ### Instalar desde una carpeta local (para desarrollar el plugin)
 
@@ -161,7 +164,8 @@ git clone https://github.com/royrojas/Claude-Orquesta.git
 ### Verificar
 
 ```
-/orquesta:doctor      → todo en ✓ (o te dice qué falta y cómo)
+/orquesta:init        → config del proyecto (te pregunta los modelos; si ya existe, no la toca)
+/orquesta:doctor      → todo en ✓ (o te dice qué falta y cómo) — siempre después de init
 /orquesta:estado      → tabla de trabajadores con motor y modelo
 ```
 
@@ -265,7 +269,7 @@ Enrutamiento efectivo (trabajador → motor → modelo y de qué archivo sale), 
 
 ### `/orquesta:doctor`
 
-Diagnóstico del entorno: versión de PowerShell y `pwsh` en PATH, hooks y scripts del plugin, config válida y motores de los trabajadores, Codex CLI (versión y login) si algún trabajador lo usa, plugin oficial de OpenAI, graphify, carpeta de Obsidian, git, PLAN. Con "Siguientes pasos" cuando algo falta. Si el proyecto no tiene `.claude/orquesta.json`, te sugiere `/orquesta:init` (no lo crea él: doctor es solo lectura).
+Diagnóstico del entorno: versión de PowerShell y `pwsh` en PATH, hooks y scripts del plugin, config válida y motores de los trabajadores, Codex CLI (versión y login) si algún trabajador lo usa, plugin oficial de OpenAI, graphify, carpeta de Obsidian, git, PLAN. Con "Siguientes pasos" cuando algo falta. Si el proyecto no tiene `.claude/orquesta.json`, te sugiere `/orquesta:init` (no lo crea él: doctor es solo lectura). Si el `CLAUDE.md` del proyecto declara una carpeta de Obsidian absoluta distinta de la que resuelve la config, lo marca con ✗ y te manda a `/orquesta:init` — solo lo lee para diagnosticar, la config sigue mandando.
 
 ### `/orquesta:init`
 
@@ -274,8 +278,9 @@ Crea `.claude/orquesta.json` en el proyecto si no existe: un esqueleto mínimo y
 Después te pregunta, en una sola ronda, **quién implementa, quién toma las tareas difíciles y quién revisa/audita** (Claude Sonnet/Opus/Fable o Codex, con o sin modelo específico), **dónde van las notas de cierre** si el CLAUDE.md no lo dijo (dentro del repo — default, no hace falta Obsidian —, en una carpeta de tu vault, o ninguna) y, si elegiste Codex, el razonamiento. Funciona sin Obsidian, sin graphify y sin ningún otro skill: todo eso es opcional. Escribe **solo las claves que elegiste**: si para un rol te quedaste con el default, esa clave no se escribe y sigue al día con el plugin. Te avisa si implementador y revisor quedaron en el mismo modelo del mismo proveedor (perdés la mirada independiente), y cierra mostrando la tabla de `/orquesta:estado` para que veas qué quedó.
 
 ```
-/orquesta:init          ← la primera vez que usás orquesta en un proyecto
-/orquesta:estado        ← confirmá qué quedó y de qué archivo sale cada valor
+/orquesta:init          ← la primera vez que usás orquesta en un proyecto (si la config ya existe, no la toca)
+/orquesta:doctor        ← después, siempre: valida el entorno con lo que quedó
+/orquesta:estado        ← la tabla de enrutamiento con la fuente de cada valor
 ```
 
 ### Scripts que podés correr a mano
@@ -753,7 +758,9 @@ Si existe `graphify-out/` (lo genera `/graphify .`), el cartógrafo lee `GRAPH_R
 
 Al cerrar un PLAN, el documentador escribe en las carpetas configuradas (por defecto `docs/decisiones` y `docs/handoffs`, dentro del repo).
 
-**Si tu vault está fuera del repo** (el caso normal — cada persona del equipo lo tiene en una ruta distinta de su disco), no pongas esa ruta en el `.claude/orquesta.json` del proyecto: ese archivo se versiona y se comparte, y tu ruta personal no le sirve a nadie más. En cambio:
+**Si tu vault está fuera del repo**, lo más simple es la **ruta absoluta** en `contexto.obsidian.carpeta_decisiones`/`carpeta_handoffs` del `.claude/orquesta.json` del proyecto — es lo que escribe `/orquesta:init` (la toma tal cual del CLAUDE.md). Funciona en tu máquina y no hace falta nada más.
+
+**Si el repo lo comparte un equipo** y no querés una ruta personal de tu disco en el archivo versionado (cada persona tiene el vault en otro lado), separalo en dos:
 
 1. En tu `~/.claude/orquesta.json` **personal** (nunca en el del proyecto), declarás dónde está tu vault:
    ```json
@@ -764,7 +771,7 @@ Al cerrar un PLAN, el documentador escribe en las carpetas configuradas (por def
    { "contexto": { "obsidian": { "carpeta_decisiones": "Proyectos/MiProyecto/Decisiones", "carpeta_handoffs": "Proyectos/MiProyecto/Decisiones" } } }
    ```
 
-`carpeta_decisiones`/`carpeta_handoffs` se resuelven así: si ya son una ruta absoluta, se usan tal cual; si no, y hay `vault_root` seteado, se resuelven contra el vault; si no hay ninguno de los dos, contra el repo (el default). Así cada persona en el equipo apunta a su propio vault sin tocar el archivo compartido, y alguien sin vault de Obsidian simplemente sigue usando `docs/decisiones` dentro del repo. `contexto.obsidian.usar: false` apaga esto por completo (el arquitecto ni delega al documentador).
+`carpeta_decisiones`/`carpeta_handoffs` se resuelven así: si ya son una ruta absoluta, se usan tal cual; si no, y hay `vault_root` seteado, se resuelven contra el vault; si no hay ninguno de los dos, contra el repo (el default). **Ojo:** la forma relativa (`Proyectos/X/Decisiones`) solo tiene sentido con `vault_root`; sin él se resuelve contra el repo y apunta a una carpeta que no existe. Si el CLAUDE.md del proyecto declara otra carpeta que la que resuelve la config, `/orquesta:doctor` y `/orquesta:estado` te lo marcan. Así cada persona en el equipo apunta a su propio vault sin tocar el archivo compartido, y alguien sin vault de Obsidian simplemente sigue usando `docs/decisiones` dentro del repo. `contexto.obsidian.usar: false` apaga esto por completo (el arquitecto ni delega al documentador).
 
 Tu vault no tiene por qué separar "Handoffs" de "Decisiones": si tu estructura solo tiene una carpeta de decisiones (por ejemplo la que arma el skill `configurar-proyecto`, con `Decisiones/` y `Hallazgos/`, sin `Handoffs/`), apuntá `carpeta_handoffs` a la misma carpeta que `carpeta_decisiones` — se distinguen igual por el prefijo del nombre de archivo (`ADR-` vs `HANDOFF-`).
 
@@ -881,7 +888,7 @@ Claude-Orquesta/
     ├── schemas/           reporte.schema.json · revision.schema.json
     ├── config/orquesta.defaults.json
     ├── ejemplos/          orquesta.json · orquesta-codex.json
-    ├── tests/             Test-Orquesta.ps1 (208 aserciones) · fake-codex.ps1
+    ├── tests/             Test-Orquesta.ps1 (212 aserciones) · fake-codex.ps1
     ├── README.md          ficha técnica del plugin
     └── CHANGELOG.md
 ```

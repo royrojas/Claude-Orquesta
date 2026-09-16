@@ -33,7 +33,7 @@ Para probar desde una carpeta local antes de publicar:
 /plugin install orquesta@orquesta
 ```
 
-Reiniciá Claude Code (o `/reload-plugins`). Comprobá con `/orquesta:doctor` y mirá el enrutamiento con `/orquesta:estado`.
+Reiniciá Claude Code (o `/reload-plugins`). En cada proyecto, siempre en este orden: `/orquesta:init` (crea la config y te pregunta los modelos; si ya existe no la toca) → `/orquesta:doctor` (valida) → `/orquesta:estado` (enrutamiento con la fuente de cada valor).
 
 > Podés copiar `plugins/orquesta/skills/*` a `~/.claude/skills/` y `agents/*` a `~/.claude/agents/`, pero así **perdés las compuertas** (los hooks de plugin no se copian) y `${CLAUDE_PLUGIN_ROOT}` no se sustituye. Instalalo como plugin.
 
@@ -50,7 +50,7 @@ claude --model fable            # o /model fable dentro de la sesión
 | `/orquesta:revisar BRIEF-03` · `/orquesta:revisar final` | Revisión con ojos frescos bajo demanda (subagente revisor, solo lectura + build/tests). |
 | `/orquesta:estado` | Modelo por trabajador y de dónde sale, estado del PLAN, graphify/Obsidian, delegaciones por modelo. |
 | `/orquesta:init` | Crea `.claude/orquesta.json` del proyecto (esqueleto mínimo, editable, carpetas de Obsidian pre-llenadas desde el `CLAUDE.md`) y te pregunta quién implementa / quién toma lo difícil / quién revisa; escribe solo lo que elegís. No sobreescribe sin preguntar. |
-| `/orquesta:doctor` | Diagnóstico del entorno: pwsh, hooks, config, Codex CLI y login, plugin de OpenAI, graphify, git. Corré esto después de instalar. |
+| `/orquesta:doctor` | Diagnóstico del entorno: pwsh, hooks, config, Codex CLI y login, plugin de OpenAI, graphify, git. Corré esto después de instalar y siempre después de `/orquesta:init`. |
 
 El arquitecto también se activa solo si le pedís "hacelo con subagentes", "modo arquitecto", o una feature/migración de varios pasos. Para un cambio de una función no abre PLAN: lo hace directo.
 
@@ -176,7 +176,7 @@ plugins/orquesta/
 pwsh -NoProfile -File plugins/orquesta/tests/Test-Orquesta.ps1
 ```
 
-208 aserciones sin dependencias: JSON de manifiestos y hooks, frontmatter de agentes y skills, sintaxis de todos los scripts, merge de config, y cada compuerta alimentada con el JSON que Claude Code manda por stdin (deny/allow/block/nudge, `agent_id`, `stop_hook_active`, `ORQUESTA_GATES`), más el motor Codex contra un `codex` falso (compuertas, flags, REPORTE, thread_id, resume, tokens), la validación de forma de BRIEFs, el aviso de sesión, la salida estructurada (JSON → REPORTE/REVISIÓN) y el doctor.
+212 aserciones sin dependencias: JSON de manifiestos y hooks, frontmatter de agentes y skills, sintaxis de todos los scripts, merge de config, y cada compuerta alimentada con el JSON que Claude Code manda por stdin (deny/allow/block/nudge, `agent_id`, `stop_hook_active`, `ORQUESTA_GATES`), más el motor Codex contra un `codex` falso (compuertas, flags, REPORTE, thread_id, resume, tokens), la validación de forma de BRIEFs, el aviso de sesión, la salida estructurada (JSON → REPORTE/REVISIÓN) y el doctor.
 
 El repo trae un workflow de GitHub Actions (`.github/workflows/tests.yml`) que corre la misma suite en **windows-latest y ubuntu-latest** en cada push. Es la prueba en Windows que no se puede hacer desde Linux: rutas con `\`, shims `.cmd`, finales de línea.
 

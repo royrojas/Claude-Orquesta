@@ -68,7 +68,9 @@ if (-not (Get-Prop $cfg 'contexto.obsidian.usar')) {
     $dec = Resolve-ObsidianPath -Cwd $Cwd -Config $cfg -Valor (Get-Prop $cfg 'contexto.obsidian.carpeta_decisiones')
     $hnd = Resolve-ObsidianPath -Cwd $Cwd -Config $cfg -Valor (Get-Prop $cfg 'contexto.obsidian.carpeta_handoffs')
     $nDec = if ($dec -and (Test-Path -LiteralPath $dec)) { @(Get-ChildItem -LiteralPath $dec -Filter '*.md' -File -ErrorAction SilentlyContinue).Count } else { -1 }
-    $out.Add("Obsidian: decisiones ``$dec/`` $(if ($nDec -ge 0) {"($nDec notas)"} else {'(no existe aún)'}) · handoffs ``$hnd/`` $(if ($hnd -and (Test-Path -LiteralPath $hnd)) {'(existe)'} else {'(no existe aún)'})")
+    $enMd = Get-ObsidianDesajusteClaudeMd -Cwd $Cwd -RutaResuelta $dec
+    $aviso = if ($enMd) { " · **el CLAUDE.md dice ``$enMd`` — corré /orquesta:init o ajustá contexto.obsidian**" } else { '' }
+    $out.Add("Obsidian: decisiones ``$dec/`` $(if ($nDec -ge 0) {"($nDec notas)"} else {'(no existe aún)'}) · handoffs ``$hnd/`` $(if ($hnd -and (Test-Path -LiteralPath $hnd)) {'(existe)'} else {'(no existe aún)'})$aviso")
 }
 try {
     $branch = (& git -C $Cwd rev-parse --abbrev-ref HEAD 2>$null)

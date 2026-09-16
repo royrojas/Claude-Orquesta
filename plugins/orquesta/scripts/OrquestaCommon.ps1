@@ -267,6 +267,21 @@ function Get-ObsidianCarpetaDesdeClaudeMd {
     return $null
 }
 
+function Get-ObsidianDesajusteClaudeMd {
+    <#
+      Solo diagnóstico: si el CLAUDE.md del proyecto declara una carpeta de decisiones absoluta DISTINTA de la que
+      resuelve la config, devuelve esa carpeta para que doctor/estado avisen. La config sigue mandando; esto no
+      cambia ninguna ruta. Devuelve $null si no hay CLAUDE.md, no hay línea usable, o coinciden.
+    #>
+    param([string]$Cwd, [string]$RutaResuelta)
+    $md = Get-ObsidianCarpetaDesdeClaudeMd -Cwd $Cwd
+    if (-not $md) { return $null }
+    $a = ("$md" -replace '\\', '/').TrimEnd('/')
+    $b = ("$RutaResuelta" -replace '\\', '/').TrimEnd('/')
+    if ($a -eq $b) { return $null }
+    return $md
+}
+
 function Get-RelativePathSafe {
     # Ruta relativa normalizada con '/' respecto a $Base; si no está bajo $Base devuelve la absoluta normalizada.
     param([string]$Path, [string]$Base)

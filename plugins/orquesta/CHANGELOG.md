@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.3.6 — 2026-09-16
+- `doctor` y `estado` leen la línea `- Decisiones:` del `CLAUDE.md` del proyecto **solo para
+  diagnosticar** (`Get-ObsidianDesajusteClaudeMd`, mismo parser conservador del init): si
+  declara una carpeta absoluta distinta de la que resuelve la config, doctor lo marca con ✗ y
+  "Siguientes pasos: corré /orquesta:init", y estado lo agrega a la línea de Obsidian (lo lee el
+  arquitecto al arrancar). La config sigue mandando; esto no cambia ninguna ruta. Encontrado en
+  AI Monitor: la config resolvía al default del repo y el CLAUDE.md apuntaba al vault, y el
+  script solo decía "aún no existe".
+- `init`: al agregar las carpetas de Obsidian a una config existente, escribe la ruta
+  **absoluta tal cual** figura en el CLAUDE.md. En AI Monitor el skill la había convertido a
+  `Proyectos/AI.Monitor/Decisiones` (la forma relativa a `vault_root`), que sin `vault_root`
+  se resuelve contra el repo y queda apuntando a una carpeta inexistente — y en un segundo
+  intento el skill "arregló" la inconsistencia creando `~/.claude/orquesta.json` con
+  `vault_root` por su cuenta, el archivo global que el usuario había decidido no tener. Ahora
+  init tiene prohibido crear o editar el archivo global: solo toca el `.claude/orquesta.json`
+  del proyecto. README §13 reordenado: la ruta absoluta es el default simple; `vault_root` es
+  la opción para equipos, y la pide el usuario, no el skill.
+- Orden fijo documentado en todo el manual y en el propio skill de init: **`/orquesta:init` →
+  `/orquesta:doctor` → `/orquesta:arquitecto`**. init es idempotente y doctor solo lectura, así
+  que init primero nunca hace daño; al revés, doctor reporta una config que init está por cambiar.
+- 4 aserciones nuevas (212).
+
 ## 1.3.5 — 2026-09-16
 - **`/orquesta:init`** (`Initialize-OrquestaConfig.ps1`): crea `.claude/orquesta.json` en el
   proyecto si no existe — un esqueleto mínimo y editable con un `_doc` por bloque

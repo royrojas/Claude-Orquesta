@@ -112,6 +112,7 @@ Assert ($skArq -match 'preferencia permanente' -and $skArq -match 'AskUserQuesti
 Assert ($skArq -match 'rutas resueltas y literales' -and $skArq -match 'nunca le digas solo') "arquitecto: le pasa al documentador las rutas de Obsidian resueltas, no en abstracto"
 $skInit = Get-Content (Join-Path $Root 'skills/init/SKILL.md') -Raw -Encoding UTF8
 Assert ($skInit -match 'AskUserQuestion' -and $skInit -match 'implementador-senior' -and $skInit -match 'revisor' -and $skInit -match 'solo las claves que eligi' -and $skInit -match 'usar: false') "init: pregunta modelos y destino de las notas (repo / vault / ninguna) y escribe solo las claves elegidas"
+Assert ($skInit -match 'absoluta, tal cual' -and $skInit -match 'No la conviertas a una ruta relativa' -and $skInit -match 'Nunca crees ni edites `~/.claude/orquesta.json`') "init: la carpeta de Obsidian se escribe absoluta tal cual, y nunca toca el ~/.claude/orquesta.json global"
 foreach ($t in @('PLAN.md', 'BRIEF.md', 'REPORTE.md', 'ADR.md', 'HANDOFF.md')) { Assert (Test-Path (Join-Path $Root "skills/arquitecto/plantillas/$t")) "plantilla $t existe" }
 foreach ($r in @('enrutamiento.md', 'brief-checklist.md', 'revision-checklist.md')) { Assert (Test-Path (Join-Path $Root "skills/arquitecto/referencias/$r")) "referencia $r existe" }
 
@@ -366,7 +367,10 @@ $vaultDec = Join-Path ([IO.Path]::GetTempPath()) 'vault-x/Proyectos/T/Decisiones
 Set-Content (Join-Path $tmpInit 'CLAUDE.md') (@('# T', '', '## Memoria del proyecto (Obsidian)', '', "- Mapa: ``$vaultDec/../_Mapa - T.md``", "- Decisiones: ``$vaultDec$([IO.Path]::DirectorySeparatorChar)``", "- Hallazgos: ``$vaultDec/../Hallazgos``") -join "`n") -Encoding UTF8
 $doc0 = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Doctor-Orquesta.ps1') -Cwd $tmpInit 2>&1 | Out-String
 Assert ($doc0 -match 'no hay \.claude/orquesta\.json' -and $doc0 -match '/orquesta:init') "doctor sin config de proyecto sugiere /orquesta:init"
+Assert ($doc0 -match '✗ Obsidian: la config resuelve a' -and $doc0 -match 'CLAUDE.md del proyecto dice') "doctor avisa cuando el CLAUDE.md declara otra carpeta de Obsidian que la config"
 Assert (-not (Test-Path $cfgPath)) "doctor sigue siendo solo lectura: no crea la config"
+$est0 = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Show-Estado.ps1') -Cwd $tmpInit 2>&1 | Out-String
+Assert ($est0 -match 'el CLAUDE.md dice') "Show-Estado también marca el desajuste config vs CLAUDE.md (lo lee el arquitecto al arrancar)"
 $r = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Initialize-OrquestaConfig.ps1') -Cwd $tmpInit 2>&1 | Out-String
 Assert ($LASTEXITCODE -eq 0 -and (Test-Path $cfgPath) -and $r -match 'pre-llenadas desde CLAUDE.md') "init crea .claude/orquesta.json y avisa qué pre-llenó"
 $gen = Get-Content $cfgPath -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -380,7 +384,11 @@ Assert ($LASTEXITCODE -eq 0 -and $est -notmatch 'orquesta:_doc' -and $est -match
 $fuentes = @((& $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Resolve-OrquestaConfig.ps1') -Cwd $tmpInit | ConvertFrom-Json)._fuentes)
 Assert ($fuentes -contains $cfgPath) "la config generada aparece como fuente del proyecto en la config efectiva"
 $doc1 = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Doctor-Orquesta.ps1') -Cwd $tmpInit 2>&1 | Out-String
-Assert ($doc1 -notmatch '/orquesta:init') "con config de proyecto, doctor ya no sugiere init"
+Assert ($doc1 -notmatch '/orquesta:init' -and $doc1 -notmatch 'CLAUDE.md del proyecto dice') "con la config tomada del CLAUDE.md, doctor ya no sugiere init ni marca desajuste"
+$gen.contexto.obsidian.carpeta_decisiones = (Join-Path $tmpInit 'otra')
+Set-Content $cfgPath ($gen | ConvertTo-Json -Depth 6) -Encoding UTF8
+$doc2 = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Doctor-Orquesta.ps1') -Cwd $tmpInit 2>&1 | Out-String
+Assert ($doc2 -match 'CLAUDE.md del proyecto dice') "config explícita distinta a la del CLAUDE.md: doctor también lo marca"
 Remove-Item $tmpInit -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Path $tmpInit -Force | Out-Null
 Set-Content (Join-Path $tmpInit 'CLAUDE.md') "## Memoria del proyecto (Obsidian)`n- Decisiones: ``...\Proyectos\T\Decisiones\``" -Encoding UTF8

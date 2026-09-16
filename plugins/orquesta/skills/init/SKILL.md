@@ -10,7 +10,7 @@ disable-model-invocation: true
 
 !`pwsh -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "${CLAUDE_PLUGIN_ROOT}/scripts/Initialize-OrquestaConfig.ps1"`
 
-Arriba está el resultado del script: creó `.claude/orquesta.json` (un esqueleto con `_doc`, más las carpetas de Obsidian si las encontró en el CLAUDE.md) o avisó que ya existía. Decíselo al usuario en una línea. Si ya existía, preguntale primero si quiere que le agregues o cambies cosas ahí; sin esa confirmación no lo toques.
+Arriba está el resultado del script: creó `.claude/orquesta.json` (un esqueleto con `_doc`, más las carpetas de Obsidian si las encontró en el CLAUDE.md) o avisó que ya existía. Decíselo al usuario en una línea. Si ya existía, preguntale primero si quiere que le agregues o cambies cosas ahí; sin esa confirmación no lo toques. Si le agregás las carpetas de Obsidian tomándolas del CLAUDE.md, copiá la ruta **absoluta tal cual** está ahí (ver abajo).
 
 Todo lo que sigue funciona **sin Obsidian, sin graphify y sin `configurar-proyecto`**: son opcionales. Con los defaults, las notas de cierre quedan dentro del repo y el cartógrafo trabaja con Glob/Grep.
 
@@ -28,8 +28,9 @@ Si alguna respuesta fue Codex, una segunda pregunta corta: **razonamiento** de C
 ## Escribí solo lo que eligió
 
 - En `.claude/orquesta.json`, **solo las claves que eligió**, fusionadas sobre el esqueleto: no borres los `_doc`. Valores válidos: motor `claude` con modelo `haiku` | `sonnet` | `opus` | `fable`; motor `codex` con `modelo` = el slug que indicó, o sin `modelo` para usar el default de su Codex. El razonamiento va en `motores.codex.razonamiento`.
-- Notas de cierre: "dentro del repo" → no escribas nada (es el default). "Vault" → `contexto.obsidian.carpeta_decisiones` y `carpeta_handoffs` con esa misma ruta. "No quiero" → `contexto.obsidian.usar: false`. Si el script ya las pre-llenó, no las toques.
+- Notas de cierre: "dentro del repo" → no escribas nada (es el default). "Vault" → `contexto.obsidian.carpeta_decisiones` y `carpeta_handoffs` con la ruta **absoluta, tal cual** la escribió el usuario o tal cual figura en el CLAUDE.md (por ejemplo `C:\...\Proyectos\X\Decisiones`). **No la conviertas a una ruta relativa** tipo `Proyectos/X/Decisiones`: sin `vault_root` en `~/.claude/orquesta.json` eso se resuelve contra el repo y queda apuntando a una carpeta que no existe. Solo usá la forma relativa si el usuario ya tiene `vault_root` configurado y te lo pide explícitamente. "No quiero" → `contexto.obsidian.usar: false`. Si el script ya las pre-llenó, no las toques.
 - Si para un rol eligió el default del plugin, **no escribas esa clave**: así sigue al día cuando el plugin cambie el default.
+- **Nunca crees ni edites `~/.claude/orquesta.json`** desde init: solo el `.claude/orquesta.json` del proyecto. El archivo global es una decisión del usuario para tomar aparte, no algo que init decide por él — aunque el repo se comparta en GitHub. Si le parece que le conviene `vault_root`, que lo pida explícitamente.
 - Si quien implementa y quien revisa quedaron en el mismo modelo del mismo proveedor, avisale en una línea que pierde la mirada independiente (la regla del protocolo es que sean modelos o proveedores distintos) — y respetá su elección igual.
 
-Cerrá corriendo `pwsh -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "${CLAUDE_PLUGIN_ROOT}/scripts/Show-Estado.ps1"` y mostrale la tabla de enrutamiento efectiva tal cual: es la confirmación de qué quedó y de qué archivo sale cada valor.
+Cerrá corriendo `pwsh -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "${CLAUDE_PLUGIN_ROOT}/scripts/Show-Estado.ps1"` y mostrale la tabla de enrutamiento efectiva tal cual: es la confirmación de qué quedó y de qué archivo sale cada valor. Y en una línea: el siguiente paso es `/orquesta:doctor` — siempre después de init, nunca antes — para validar el entorno con esa config.

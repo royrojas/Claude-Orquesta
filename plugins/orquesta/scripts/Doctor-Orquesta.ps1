@@ -92,7 +92,12 @@ if ($cfg) {
         $out.Add("- ○ Obsidian: desactivado (contexto.obsidian.usar: false)")
     } else {
         $dec = Resolve-ObsidianPath -Cwd $Cwd -Config $cfg -Valor (Get-Prop $cfg 'contexto.obsidian.carpeta_decisiones')
-        $out.Add("- $(if ($dec -and (Test-Path $dec)) { '✓' } else { '○' }) Obsidian: carpeta de decisiones ``$dec`` $(if ($dec -and (Test-Path $dec)) { 'existe' } else { 'aún no existe (se crea al cerrar el primer PLAN)' })")
+        $enMd = Get-ObsidianDesajusteClaudeMd -Cwd $Cwd -RutaResuelta $dec
+        if ($enMd) {
+            Linea $false "Obsidian: la config resuelve a ``$dec`` pero el CLAUDE.md del proyecto dice ``$enMd``" 'Corré /orquesta:init (toma la carpeta de Obsidian del CLAUDE.md y te pregunta antes de escribir) o poné contexto.obsidian.carpeta_decisiones en .claude/orquesta.json'
+        } else {
+            $out.Add("- $(if ($dec -and (Test-Path $dec)) { '✓' } else { '○' }) Obsidian: carpeta de decisiones ``$dec`` $(if ($dec -and (Test-Path $dec)) { 'existe' } else { 'aún no existe (se crea al cerrar el primer PLAN)' })")
+        }
     }
 }
 $gitOk = $false; try { & git -C $Cwd rev-parse --is-inside-work-tree 2>$null | Out-Null; $gitOk = ($LASTEXITCODE -eq 0) } catch { }
