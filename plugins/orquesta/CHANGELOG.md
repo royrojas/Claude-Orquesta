@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.3.3 — 2026-09-16
+- Arquitecto: al cerrar el PLAN, ahora le pasa al `documentador` las rutas **resueltas y
+  literales** de `contexto.obsidian.carpeta_decisiones`/`carpeta_handoffs` en vez de "las
+  carpetas de la config" en abstracto — encontrado en una orquestación real de punta a punta
+  donde el documentador, sin esa ruta explícita, improvisó `.orquesta/decisiones` en vez de
+  `docs/decisiones`.
+- `Log-Delegacion.ps1`: la detección de `estado` en la bitácora no reconocía `PARCIAL` (solo
+  BLOQUEADO/RECHAZADO/APROBADO/COMPLETADO) — agregado. Documentado que el `documentador` no
+  tiene ese campo por diseño (su reporte no es un REPORTE/REVISIÓN), así que su `estado` vacío
+  es esperado, no un bug.
+- Validado en esta versión: una orquestación completa real de punta a punta (cartógrafo →
+  clarificación → PLAN → BRIEF → implementador → revisor → verificación final → documentador)
+  con subagentes de Claude reales y tests corridos de forma independiente (10/10 OK), y motor
+  codex contra Codex CLI real hasta `COMPLETADO` (ver README §16 y el vault del proyecto).
+- 185 aserciones.
+
 ## 1.3.2 — 2026-09-16
 - Overrides de modelo por chat: si la frase suena a preferencia permanente ("de ahora en más", "siempre en este proyecto") en vez de puntual, el arquitecto pregunta si la persiste en `.claude/orquesta.json` o `~/.claude/orquesta.json` (merge de solo las claves que cambian, nunca reescribe el archivo entero); sin confirmación explícita queda como override de esa orquestación nada más, como antes.
 - Manual: nueva sección "Ejemplo rápido" al inicio del README (antes del índice) con un JSON real de enrutamiento mixto Claude+Codex. §7/§8: catálogo real de modelos de Codex (`gpt-6-astra`, `gpt-reserve`, `gpt-5.6-sol/terra/luna`, `gpt-5.5`) con para qué sirve cada uno, y la salvedad de que `motores.codex.razonamiento` es una sola clave global (no por trabajador), a diferencia de `modelo` que sí es por rol.

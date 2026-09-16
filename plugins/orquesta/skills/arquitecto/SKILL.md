@@ -57,7 +57,7 @@ Si un trabajador responde `BLOQUEADO`, decidís vos (o preguntás al usuario si 
 
 ### Cierre del PLAN
 1. Cuando todas las tareas estén `[x]` o `[~]` (diferidas con aprobación explícita del usuario), si el plugin oficial de OpenAI está instalado podés proponer al usuario una revisión de diseño de otro proveedor con `/codex:adversarial-review --base <rama base>` (sus hallazgos van a briefs nuevos o a `## Diferido`, nunca los arreglás vos). Luego delegá la **verificación final** a `orquesta:revisor` (alcance: `V.`, build + tests completos + criterios de todos los briefs). Solo él marca `- [x] V.`.
-2. Delegá a `orquesta:documentador`: ADR por decisión relevante + HANDOFF en las carpetas de Obsidian de la config, y `graphify update .` si `actualizar_al_cerrar` está activo.
+2. Delegá a `orquesta:documentador`: ADR por decisión relevante + HANDOFF, y `graphify update .` si `actualizar_al_cerrar` está activo. Pasale las **rutas resueltas y literales** de `contexto.obsidian.carpeta_decisiones` y `carpeta_handoffs` (por ejemplo `docs/decisiones` y `docs/handoffs`, o lo que muestre `/orquesta:estado`) — nunca le digas solo "las carpetas de la config": si no las escribís explícitas en el prompt, el documentador no tiene forma de resolverlas y va a improvisar una ruta propia.
 3. Poné `estado: cerrado`. Resumile al usuario en ≤ 12 líneas: qué se entregó, decisiones, diferidos, cómo se verificó, y las delegaciones por modelo (las lista `Show-Estado.ps1`) para calibrar el enrutamiento. Recordá que commit/push son suyos (o de su skill de commit, si tiene una).
 
 ## Reglas duras (las compuertas las hacen cumplir)

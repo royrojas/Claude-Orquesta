@@ -109,6 +109,7 @@ foreach ($s in Get-ChildItem (Join-Path $Root 'skills') -Directory) {
 $skArq = Get-Content (Join-Path $Root 'skills/arquitecto/SKILL.md') -Raw -Encoding UTF8
 Assert ($skArq -match '`inherit`' -and $skArq -match 'ID completo' -and $skArq -match '-Intento N\+1 -Hallazgos') "arquitecto: regla de model (inherit / ID completo) y reintento codex documentados"
 Assert ($skArq -match 'preferencia permanente' -and $skArq -match 'AskUserQuestion' -and $skArq -match '\.claude/orquesta\.json' -and $skArq -match 'fusion') "arquitecto: pregunta antes de persistir un override permanente en orquesta.json"
+Assert ($skArq -match 'rutas resueltas y literales' -and $skArq -match 'nunca le digas solo') "arquitecto: le pasa al documentador las rutas de Obsidian resueltas, no en abstracto"
 foreach ($t in @('PLAN.md', 'BRIEF.md', 'REPORTE.md', 'ADR.md', 'HANDOFF.md')) { Assert (Test-Path (Join-Path $Root "skills/arquitecto/plantillas/$t")) "plantilla $t existe" }
 foreach ($r in @('enrutamiento.md', 'brief-checklist.md', 'revision-checklist.md')) { Assert (Test-Path (Join-Path $Root "skills/arquitecto/referencias/$r")) "referencia $r existe" }
 
@@ -210,6 +211,10 @@ Assert ($r -match 'additionalContext' -and $r -match '90 líneas') "reporte de 9
 $bit = Get-Content (Join-Path $tmp '.orquesta/bitacora.jsonl') | ForEach-Object { $_ | ConvertFrom-Json }
 Assert (@($bit | Where-Object { $_.evento -eq 'stop' }).Count -ge 2) "los stops quedan registrados"
 Assert (@($bit | Where-Object { $_.PSObject.Properties['estado'] -and $_.estado -eq 'COMPLETADO' }).Count -ge 1) "detecta el estado COMPLETADO del reporte"
+$parcial = @{ session_id = 'test-1'; cwd = $tmp; hook_event_name = 'SubagentStop'; agent_type = 'orquesta:implementador'; agent_id = 'a2'; stop_hook_active = $false; last_assistant_message = "Estado: PARCIAL`nFalta el criterio 2" }
+Assert ((Invoke-Hook 'Log-Delegacion.ps1' $parcial) -eq '') "reporte PARCIAL no dispara nudge (bajo el límite)"
+$bit = Get-Content (Join-Path $tmp '.orquesta/bitacora.jsonl') | ForEach-Object { $_ | ConvertFrom-Json }
+Assert (@($bit | Where-Object { $_.PSObject.Properties['estado'] -and $_.estado -eq 'PARCIAL' }).Count -ge 1) "detecta el estado PARCIAL del reporte (antes se perdía)"
 
 Write-Host "`n== 11. Show-Estado ==" -ForegroundColor Cyan
 $estado = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Show-Estado.ps1') -Cwd $tmp | Out-String

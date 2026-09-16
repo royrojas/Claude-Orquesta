@@ -3,6 +3,12 @@
   Hook SubagentStop: registra el cierre de cada subagente en .orquesta/bitacora.jsonl (tipo, id, tamaño del reporte)
   y, si el reporte final supera limites.max_lineas_reporte, le pide al trabajador que lo resuma
   y deje el detalle en .orquesta/reportes/. Respeta stop_hook_active.
+
+  El campo `estado` se infiere buscando BLOQUEADO/RECHAZADO/PARCIAL/APROBADO/COMPLETADO en el
+  reporte (formato REPORTE/REVISIÓN). El `documentador` no usa ese vocabulario (su reporte no
+  tiene un campo de estado, ver agents/documentador.md) — que le quede vacío es esperado, no un
+  error. No usar `estado` como fuente única de métricas: es una heurística de texto, no un
+  campo estructurado.
 #>
 . "$PSScriptRoot/OrquestaCommon.ps1"
 
@@ -20,7 +26,7 @@ $lineas = if ($msg) { @($msg -split "`r?`n").Count } else { 0 }
 Add-BitacoraEntry -Cwd $cwd -Config $cfg -Entry @{
     evento = 'stop'; sesion = "$(Get-Prop $in 'session_id')"; agente = $short
     agent_id = "$(Get-Prop $in 'agent_id')"; lineas_reporte = $lineas; chars_reporte = $msg.Length
-    estado = $(if ($msg -match '(?i)\bBLOQUEADO\b') { 'BLOQUEADO' } elseif ($msg -match '(?i)\bRECHAZADO\b') { 'RECHAZADO' } elseif ($msg -match '(?i)\bAPROBADO\b') { 'APROBADO' } elseif ($msg -match '(?i)\bCOMPLETADO\b') { 'COMPLETADO' } else { '' })
+    estado = $(if ($msg -match '(?i)\bBLOQUEADO\b') { 'BLOQUEADO' } elseif ($msg -match '(?i)\bRECHAZADO\b') { 'RECHAZADO' } elseif ($msg -match '(?i)\bPARCIAL\b') { 'PARCIAL' } elseif ($msg -match '(?i)\bAPROBADO\b') { 'APROBADO' } elseif ($msg -match '(?i)\bCOMPLETADO\b') { 'COMPLETADO' } else { '' })
 }
 
 if ((Get-Prop $in 'stop_hook_active') -eq $true) { exit 0 }
