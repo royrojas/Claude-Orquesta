@@ -113,6 +113,7 @@ Assert ($skArq -match 'rutas resueltas y literales' -and $skArq -match 'nunca le
 $skInit = Get-Content (Join-Path $Root 'skills/init/SKILL.md') -Raw -Encoding UTF8
 Assert ($skInit -match 'AskUserQuestion' -and $skInit -match 'implementador-senior' -and $skInit -match 'revisor' -and $skInit -match 'solo las claves que eligi' -and $skInit -match 'usar: false') "init: pregunta modelos y destino de las notas (repo / vault / ninguna) y escribe solo las claves elegidas"
 Assert ($skInit -match 'absoluta, tal cual' -and $skInit -match 'No la conviertas a una ruta relativa' -and $skInit -match 'Nunca crees ni edites `~/.claude/orquesta.json`') "init: la carpeta de Obsidian se escribe absoluta tal cual, y nunca toca el ~/.claude/orquesta.json global"
+Assert ($skInit -notmatch 'Show-Estado\.ps1' -and $skInit -match '/orquesta:doctor') "init: cierra apuntando a /orquesta:doctor sin lanzar pwsh (evita el prompt de shell anidado)"
 foreach ($t in @('PLAN.md', 'BRIEF.md', 'REPORTE.md', 'ADR.md', 'HANDOFF.md')) { Assert (Test-Path (Join-Path $Root "skills/arquitecto/plantillas/$t")) "plantilla $t existe" }
 foreach ($r in @('enrutamiento.md', 'brief-checklist.md', 'revision-checklist.md')) { Assert (Test-Path (Join-Path $Root "skills/arquitecto/referencias/$r")) "referencia $r existe" }
 

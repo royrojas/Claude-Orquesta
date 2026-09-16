@@ -859,6 +859,8 @@ Dejalo en `en-ejecucion` con las tareas `[x]`; mañana `/orquesta:revisar final`
 | Codex en Windows reporta `BLOQUEADO` con `CreateProcessWithLogonW failed` en el log | El sandbox `workspace-write` de Codex no puede anidarse dentro del propio sandbox de Claude Code en Windows | Probá `"sandbox": "danger-full-access"` en tu máquina (nunca en CI). Confirmado: con eso el mismo BRIEF corrió bien. |
 | Codex: "not inside a trusted directory / git repo" | El proyecto no es un repo git | El wrapper agrega `--skip-git-repo-check`; mejor `git init`. |
 | El aviso de sesión no aparece | El PLAN está `cerrado` o no existe | Es el comportamiento esperado. |
+| Claude Code pregunta "Command spawns a nested PowerShell process which cannot be validated" cuando el arquitecto corre un script del plugin | Regla de seguridad de Claude Code: la herramienta PowerShell lanzando `pwsh` es un shell anidado que no puede validar contra las reglas de permiso, aunque el skill lo tenga permitido | Es normal. Elegí "Yes, and don't ask again" una vez por script. Los comandos `/orquesta:*` que solo muestran algo (doctor, estado) no preguntan: corren vía el `!` del skill. |
+| El prompt de permiso muestra una ruta de `claude-orquesta` (el repo del plugin), no de mi proyecto | El marketplace es local (`source: directory`): Claude Code sirve el plugin desde su carpeta fuente, y `${CLAUDE_PLUGIN_ROOT}` apunta ahí | Es normal; no está tocando tu proyecto, es el plugin ejecutando su propio script. Con un marketplace de GitHub la ruta sería la caché de `~/.claude/plugins/`. |
 | `/orquesta:estado` o `/orquesta:doctor` dicen "(no existe aún)" de una carpeta de Obsidian que sí existe en tu vault | No configuraste `contexto.obsidian.vault_root`, así que `carpeta_decisiones`/`carpeta_handoffs` se resuelven contra el repo (el default), no contra tu vault | Poné `vault_root` en tu `~/.claude/orquesta.json` **personal** (nunca en el del proyecto) — ver [§13](#13-graphify-obsidian-y-la-documentación-que-deja). |
 | La delegación falla con un error de validación del parámetro `model` | Configuraste un ID completo (`claude-sonnet-5`) y el arquitecto lo pasó tal cual (plugin anterior a 1.3.1) | El Agent tool solo acepta `haiku`/`sonnet`/`opus`/`fable`. Desde 1.3.1 el arquitecto lo reduce al alias y omite `model:` con `inherit`; actualizá el plugin y, mejor, usá alias en la config. |
 | El badge del README sale gris | El workflow no corrió aún o el nombre del repo cambió | Mirá la pestaña Actions. |
@@ -888,7 +890,7 @@ Claude-Orquesta/
     ├── schemas/           reporte.schema.json · revision.schema.json
     ├── config/orquesta.defaults.json
     ├── ejemplos/          orquesta.json · orquesta-codex.json
-    ├── tests/             Test-Orquesta.ps1 (212 aserciones) · fake-codex.ps1
+    ├── tests/             Test-Orquesta.ps1 (213 aserciones) · fake-codex.ps1
     ├── README.md          ficha técnica del plugin
     └── CHANGELOG.md
 ```

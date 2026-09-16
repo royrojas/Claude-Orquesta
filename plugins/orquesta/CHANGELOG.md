@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.3.7 — 2026-09-16
+- `init` ya no corre `Show-Estado.ps1` al cerrar: lanzar `pwsh` desde el skill dispara el
+  prompt de Claude Code "nested PowerShell process which cannot be validated" (regla de
+  seguridad para shells anidados, no la salva `allowed-tools`). Ahora cierra apuntando a
+  `/orquesta:doctor` y `/orquesta:estado`, que corren vía el `!` del skill sin pedir permiso —
+  y es coherente con el orden fijo init → doctor.
+- README §16: dos filas nuevas — el prompt de shell anidado (qué es, elegir "don't ask again"
+  una vez por script) y por qué la ruta del prompt es la del repo `claude-orquesta` con un
+  marketplace local (`source: directory` → `${CLAUDE_PLUGIN_ROOT}` es la carpeta fuente).
+- 1 aserción nueva (213).
+
 ## 1.3.6 — 2026-09-16
 - `doctor` y `estado` leen la línea `- Decisiones:` del `CLAUDE.md` del proyecto **solo para
   diagnosticar** (`Get-ObsidianDesajusteClaudeMd`, mismo parser conservador del init): si
