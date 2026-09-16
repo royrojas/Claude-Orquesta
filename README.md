@@ -7,9 +7,12 @@
 ```
 /plugin marketplace add royrojas/Claude-Orquesta
 /plugin install orquesta@orquesta
+/reload-plugins
 /orquesta:doctor
 /orquesta:arquitecto Exportar los cierres de caja a CSV desde el POS
 ```
+
+¿Qué modelo hace qué? Se decide en un JSON de tres líneas: ver [§6, ejemplos A–F](#ejemplos-de-configuración-listos-para-copiar).
 
 ---
 
@@ -90,7 +93,7 @@ Todo corre **desde la terminal de Claude Code**. Codex, si lo usás, corre como 
 | **PowerShell 7** (`pwsh`) en el PATH | Todas las compuertas y scripts | Windows: `winget install Microsoft.PowerShell` · macOS: `brew install powershell` · Linux: paquete `powershell` |
 | Codex CLI *(opcional)* | Solo si algún trabajador usa `motor: codex` | `npm i -g @openai/codex` y `codex login` |
 | graphify *(opcional)* | Mapa del repo más barato y mejor para el cartógrafo | Ver [graphify](https://github.com/safishamsi/graphify); genera `graphify-out/` |
-| Carpeta de decisiones *(opcional)* | ADR y HANDOFF en tu vault de Obsidian | Cualquier carpeta dentro del repo; por defecto `docs/decisiones` y `docs/handoffs` |
+| Carpeta de decisiones *(opcional)* | ADR y HANDOFF en tu vault de Obsidian | Una carpeta **relativa al repo**; por defecto `docs/decisiones` y `docs/handoffs`. Rutas absolutas a un vault externo todavía no están soportadas (ver [§16](#16-solución-de-problemas)). |
 
 Windows con PowerShell 5.1 solo **no alcanza**: los scripts usan sintaxis de PowerShell 7 y `pwsh` tiene que estar en el PATH que ve Claude Code.
 
@@ -251,8 +254,8 @@ La config se resuelve por **merge profundo** de tres archivos; solo escribís la
 
 | Clave | Default | Qué controla |
 |---|---|---|
-| `orquestador.modelo` | `fable` | Modelo esperado para la sesión del arquitecto. Solo sirve para avisarte si no coincide: el modelo de la sesión lo fijás con `claude --model` o `/model`. |
-| `trabajadores.<rol>.modelo` | ver §7 | `haiku`, `sonnet`, `opus`, `fable`, `inherit`, un ID completo (`claude-sonnet-5`) o, con motor codex, un modelo de Codex (`""` = el default de `~/.codex/config.toml`). |
+| `orquestador.modelo` | `fable` | Modelo esperado para la sesión del arquitecto. Solo declara la expectativa: el modelo real lo fijás con `claude --model` o `/model`, y el aviso de "no coincide" lo da el arquitecto por autoconocimiento (best-effort; ningún script puede leer el modelo de la sesión). |
+| `trabajadores.<rol>.modelo` | ver §7 | Con motor claude: `haiku`, `sonnet`, `opus`, `fable` (alias del Agent tool) o `inherit` (el modelo de la sesión, es decir el del arquitecto). Los IDs completos (`claude-sonnet-5`) hoy **no** los acepta el Agent tool: usá alias. Con motor codex: un modelo de Codex (`gpt-5.x`); vacío o alias de Claude → cae a `motores.codex.modelo`. |
 | `trabajadores.<rol>.motor` | `claude` | `claude` (subagente) o `codex` (proceso `codex exec`). |
 | `trabajadores.<rol>.esfuerzo` | según rol | Documentativo; el esfuerzo real está en el frontmatter del agente. |
 | `motores.codex.comando` | `codex` | Ejecutable de Codex (o ruta a un `.ps1` para pruebas). |
@@ -268,43 +271,102 @@ La config se resuelve por **merge profundo** de tres archivos; solo escribís la
 | `limites.max_lineas_reporte` | `40` | Tope de un REPORTE; lo largo va a `.orquesta/reportes/`. |
 | `limites.compuerta_delegacion_chars` | `1200` | Cualquier delegación con prompt ≥ esto exige PLAN aunque no sea a un trabajador de orquesta. |
 | `contexto.graphify.usar` / `salida` / `actualizar_al_cerrar` | `true` / `graphify-out` / `true` | Dónde está el grafo y si se refresca al cerrar. |
-| `contexto.obsidian.carpeta_decisiones` / `carpeta_handoffs` / `prefijo_adr` / `prefijo_handoff` | `docs/decisiones` / `docs/handoffs` / `ADR-` / `HANDOFF-` | Dónde y cómo se nombran las notas. |
+| `contexto.obsidian.carpeta_decisiones` / `carpeta_handoffs` / `prefijo_adr` / `prefijo_handoff` | `docs/decisiones` / `docs/handoffs` / `ADR-` / `HANDOFF-` | Dónde y cómo se nombran las notas. Rutas **relativas al repo** (absolutas: todavía no). `contexto.obsidian.usar` existe pero hoy no tiene efecto (reservado). |
 | `rutas.raiz` / `plan` / `briefs` / `reportes` / `bitacora` | `.orquesta/...` | Ubicación de los artefactos en el proyecto. |
 | `compuertas.delegacion` / `arquitecto_no_edita` / `cierre` / `bitacora` | `true` | Apagar compuertas individualmente. |
 
-### Ejemplos de configuración
+### Quién puede ser el arquitecto
 
-**Económico: Haiku/Sonnet implementan, Opus revisa.** Es el default; no hace falta escribir nada.
+El arquitecto es **siempre la sesión de Claude Code**. No es una preferencia: las compuertas son hooks de Claude Code, y es la sesión la que llama al Agent tool (trabajadores en `motor: claude`) o corre `Invoke-Codex.ps1` (trabajadores en `motor: codex`). Su modelo se fija con `claude --model <m>` o `/model <m>`, **no** en el JSON — `orquestador.modelo` solo declara cuál esperás para que el arquitecto te avise si arrancaste en otro.
 
-**Todo Opus salvo el reconocimiento:**
-```json
-{ "trabajadores": { "implementador": { "modelo": "opus" }, "documentador": { "modelo": "opus" } } }
+Por lo mismo, **Codex no puede ser el arquitecto**. Sí puede ser cualquier trabajador: implementador, senior, revisor, auditor, documentador, cartógrafo (§8).
+
+Los trabajadores, en cambio, se configuran libremente: `motor` (`claude` o `codex`) y `modelo` por rol. Regla práctica: el que **implementa** y el que **revisa** deberían ser modelos o proveedores distintos, y nunca el mismo proceso.
+
+### Ejemplos de configuración listos para copiar
+
+Van en `<proyecto>/.claude/orquesta.json` (este repo, se versiona) o en `~/.claude/orquesta.json` (vos, todos tus proyectos). Solo escribís las claves que cambian; lo demás sale de los defaults.
+
+**A) Fable orquesta · subagentes de Claude implementan (Sonnet/Opus) y revisan (Opus)** — el default. No hace falta ningún archivo.
+
+```
+claude --model fable
+/orquesta:arquitecto <objetivo>
 ```
 
-**Fable revisa y audita** (máxima exigencia; cuidá la cuota):
-```json
-{ "trabajadores": { "revisor": { "modelo": "fable" }, "auditor-seguridad": { "modelo": "fable" } } }
-```
+Para la mayoría de los proyectos. El cartógrafo va en Haiku, el implementador en Sonnet, senior/revisor/auditor en Opus, documentador en Sonnet.
 
-**Fable planea, Codex programa y prueba, Opus revisa** (ver §8; el archivo completo está en `ejemplos/orquesta-codex.json`):
+**B) Fable orquesta · Codex implementa · Claude Opus revisa y audita** — revisión entre proveedores distintos: la combinación más valiosa, y la que más cuota de Claude ahorra sin perder rigor en la revisión.
+
 ```json
 {
   "trabajadores": {
-    "implementador":        { "motor": "codex", "modelo": "" },
-    "implementador-senior": { "motor": "codex", "modelo": "" },
-    "revisor":              { "motor": "claude", "modelo": "opus" }
+    "implementador":        { "motor": "codex" },
+    "implementador-senior": { "motor": "codex" }
+  },
+  "motores": { "codex": { "razonamiento": "high" } }
+}
+```
+
+Requiere `npm i -g @openai/codex` y `codex login`. El modelo de Codex es el de tu `~/.codex/config.toml`; para fijar uno concreto, `"implementador": { "motor": "codex", "modelo": "gpt-5.4" }` o, para todos los trabajadores en codex, `"motores": { "codex": { "modelo": "gpt-5.4" } }`. El archivo completo está en `ejemplos/orquesta-codex.json`.
+
+**C) Fable orquesta · Codex hace todo lo que escribe y todo lo que revisa** — para cuidar la cuota de Claude al máximo: Fable solo planea, escribe briefs y aprueba.
+
+```json
+{
+  "trabajadores": {
+    "implementador":        { "motor": "codex" },
+    "implementador-senior": { "motor": "codex" },
+    "revisor":              { "motor": "codex" },
+    "auditor-seguridad":    { "motor": "codex" }
   }
 }
 ```
 
-**Proyecto con carpetas de Obsidian propias y más tareas en paralelo:**
+"Quien implementó no se revisa a sí mismo" se sigue cumpliendo: el revisor es **otro proceso** `codex exec`, con su propio estado y sin el hilo del implementador. Lo que perdés respecto a B es la mirada de un proveedor distinto sobre el código.
+
+**D) Claude implementa · Codex revisa** — el espejo de B: segundo par de ojos de otro proveedor sobre lo que escribió Sonnet/Opus.
+
+```json
+{ "trabajadores": { "revisor": { "motor": "codex" } } }
+```
+
+**E) Opus como sesión (sin Fable) · Sonnet implementa · Haiku mapea** — cuando no tenés Fable o no querés gastarlo en planear. Declaralo para que el aviso de "modelo distinto al esperado" no aparezca:
+
+```json
+{ "orquestador": { "modelo": "opus" } }
+```
+
+Arrancá con `claude --model opus`. `implementador: sonnet` y `cartografo: haiku` ya son default. Si además querés que el revisor no sea el mismo modelo que la sesión, `"revisor": { "modelo": "sonnet" }` o pasalo a Codex (D).
+
+**F) Todo barato, para tareas triviales** — Sonnet como sesión, Haiku implementa, Sonnet revisa. Sirve para renombres, docs, tests mecánicos. Perdés juicio en el PLAN y rigor en la revisión: no lo uses para migraciones ni SQL.
+
 ```json
 {
-  "contexto": { "obsidian": { "carpeta_decisiones": "Cerebro/Decisiones", "carpeta_handoffs": "Cerebro/Handoffs" } },
-  "limites": { "max_paralelo": 4 },
-  "enrutamiento": { "senior_si": ["migraci", "oracle", "stored procedure", "pos_detalle"] }
+  "orquestador": { "modelo": "sonnet" },
+  "trabajadores": {
+    "implementador":        { "modelo": "haiku" },
+    "implementador-senior": { "modelo": "sonnet" },
+    "revisor":              { "modelo": "sonnet" },
+    "auditor-seguridad":    { "modelo": "sonnet" }
+  }
 }
 ```
+
+**¿Y "Codex orquesta, Claude implementa"?** No aplica en este plugin, por lo explicado arriba: el arquitecto es la sesión de Claude Code por diseño. Lo más cercano es **C** (Codex hace todo lo que escribe y revisa; Claude solo planea) o **D** (Claude escribe, Codex revisa).
+
+**Ajustes que se combinan con cualquiera de los anteriores:**
+
+```json
+{
+  "trabajadores": { "revisor": { "modelo": "fable" }, "auditor-seguridad": { "modelo": "fable" } },
+  "limites": { "max_paralelo": 4 },
+  "enrutamiento": { "senior_si": ["migraci", "oracle", "stored procedure", "pos_detalle"] },
+  "contexto": { "obsidian": { "carpeta_decisiones": "docs/adr", "carpeta_handoffs": "docs/handoffs" } }
+}
+```
+
+Fable como revisor es la máxima exigencia (cuidá la cuota). Las carpetas de Obsidian son relativas al repo. Verificá siempre con `/orquesta:estado`: muestra trabajador → motor → modelo y **de qué archivo sale cada valor**.
 
 ### Cambiar modelos sin tocar archivos
 
@@ -345,12 +407,14 @@ y en `.claude/orquesta.json`:
 ```json
 {
   "trabajadores": {
-    "implementador":        { "motor": "codex", "modelo": "" },
-    "implementador-senior": { "motor": "codex", "modelo": "" }
+    "implementador":        { "motor": "codex" },
+    "implementador-senior": { "motor": "codex" }
   },
   "motores": { "codex": { "sandbox": "workspace-write", "razonamiento": "high" } }
 }
 ```
+
+No hace falta poner `"modelo"`: si el trabajador no tiene un modelo de Codex (o tiene un alias de Claude heredado del default), se usa `motores.codex.modelo`, y si ese está vacío, el default de `~/.codex/config.toml`.
 
 `/orquesta:doctor` confirma que encuentra `codex`, su versión y si estás logueado.
 
@@ -363,15 +427,13 @@ El arquitecto no usa el Agent tool: corre `scripts/Invoke-Codex.ps1 -Rol impleme
 3. Ejecuta `codex exec --json --sandbox workspace-write -C <repo> -o <reporte> [-m modelo] -c model_reasoning_effort="high" --output-schema schemas/reporte.schema.json -` con el prompt por stdin.
 4. Pide **salida estructurada**: JSON contra `schemas/reporte.schema.json` (implementadores) o `schemas/revision.schema.json` (revisor/auditor). Guarda el JSON crudo y lo **renderiza al mismo formato REPORTE/REVISIÓN** que producen los trabajadores de Claude. Si Codex devolviera texto en vez de JSON, cae al modo texto sin romper nada.
 5. Registra en la bitácora agente, modelo, duración y **tokens** de Codex.
-6. Guarda el `thread_id` de Codex. En un reintento (`-Intento 2 -Hallazgos <dictamen>`) usa `codex exec resume <thread_id>` para que Codex conserve el contexto del intento anterior.
+6. Guarda el `thread_id` de Codex. En un reintento (`-Intento 2 -Hallazgos <dictamen>`) usa `codex exec resume <thread_id>` para que Codex conserve el contexto del intento anterior. Ojo: el estado se guarda por BRIEF, no por tier, así que si el intento 2 **escala** a `implementador-senior` también reanuda el hilo del implementador (con el modelo del senior si es distinto). Si preferís que el senior arranque limpio, pasá `-SinResume`.
 
 Archivos que deja en `.orquesta/reportes/`: `REPORTE-01-codex.md` (renderizado), `REPORTE-01-codex.json` (crudo), `.codex-REPORTE-01.jsonl` (eventos), `.codex-REPORTE-01.log` (stderr) y `.codex-REPORTE-01.json` (estado: thread_id, intentos).
 
 ### Combinaciones útiles
 
-- **Codex implementa, Claude revisa**: revisión entre proveedores distintos. Es la más valiosa.
-- **Claude implementa, Codex revisa**: `"revisor": { "motor": "codex" }`. Segundo par de ojos de otro modelo.
-- **Todo Codex salvo el arquitecto**: para cuidar la cuota de Claude.
+Están con su JSON en [§6, ejemplos B, C y D](#ejemplos-de-configuración-listos-para-copiar): Codex implementa y Claude revisa (la más valiosa), Codex hace todo lo que escribe y revisa, o Claude implementa y Codex revisa.
 
 Lo que no cambia: el arquitecto es siempre la sesión de Claude Code, el BRIEF es el contrato, y quien implementó no se revisa a sí mismo.
 
@@ -612,7 +674,7 @@ Si existe `graphify-out/` (lo genera `/graphify .`), el cartógrafo lee `GRAPH_R
 
 ### Obsidian (salida)
 
-Al cerrar un PLAN, el documentador escribe en las carpetas configuradas (por defecto `docs/decisiones` y `docs/handoffs`, dentro del repo, para que Obsidian las indexe si tu vault apunta ahí):
+Al cerrar un PLAN, el documentador escribe en las carpetas configuradas (por defecto `docs/decisiones` y `docs/handoffs`). Hoy tienen que ser **relativas al repo**: si tu vault está fuera, apuntá una carpeta del vault al repo (symlink/junction) o esperá al soporte de rutas absolutas, que está en el backlog.
 
 **`docs/decisiones/ADR-20260908-export-csv-cierres.md`**
 ```markdown
@@ -695,6 +757,9 @@ Dejalo en `en-ejecucion` con las tareas `[x]`; mañana `/orquesta:revisar final`
 | Codex falla en `dotnet restore` | El sandbox `workspace-write` bloquea la red | Restaurá antes de delegar, o `"sandbox": "danger-full-access"` en tu máquina. |
 | Codex: "not inside a trusted directory / git repo" | El proyecto no es un repo git | El wrapper agrega `--skip-git-repo-check`; mejor `git init`. |
 | El aviso de sesión no aparece | El PLAN está `cerrado` o no existe | Es el comportamiento esperado. |
+| `/orquesta:estado` o `/orquesta:doctor` dicen "(no existe aún)" de una carpeta de Obsidian que sí existe | Configuraste `carpeta_decisiones`/`carpeta_handoffs` como ruta absoluta; hoy se resuelven relativas al repo | Usá una carpeta dentro del repo (o un symlink/junction desde tu vault). El soporte de rutas absolutas está en el backlog. |
+| La delegación falla con un error de validación del parámetro `model` | Configuraste `modelo: inherit` o un ID completo (`claude-sonnet-5`) | El Agent tool solo acepta `haiku`/`sonnet`/`opus`/`fable`. Usá un alias; `inherit` todavía no lo traduce el arquitecto. |
+| `/orquesta:estado` falla con "The property 'esfuerzo' cannot be found" | Agregaste un trabajador propio en `.claude/orquesta.json` sin `esfuerzo`/`rol` | Copiá las cuatro claves (`modelo`, `motor`, `esfuerzo`, `rol`) del default. Bug conocido, pendiente de arreglo. |
 | El badge del README sale gris | El workflow no corrió aún o el nombre del repo cambió | Mirá la pestaña Actions. |
 
 ## 17. Convivencia con el plugin oficial de OpenAI
