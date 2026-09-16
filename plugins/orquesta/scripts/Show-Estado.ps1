@@ -24,6 +24,7 @@ foreach ($p in $cfg.trabajadores.PSObject.Properties) {
     if ($t.Motor -eq 'codex') { $hayCodex = $true }
     $out.Add("| orquesta:$($t.Nombre) | $($t.Motor) | $($t.Modelo) | $($t.Esfuerzo) |")
 }
+$out.Add("")   # una tabla Markdown sigue hasta la primera línea vacía: sin esto, lo de abajo se vuelve filas
 if ($hayCodex) {
     $cmdCodex = "$(Get-Prop $cfg 'motores.codex.comando')"; if (-not $cmdCodex) { $cmdCodex = 'codex' }
     $disp = if ($cmdCodex -like '*.ps1') { Test-Path -LiteralPath $cmdCodex } else { $null -ne (Get-Command $cmdCodex -ErrorAction SilentlyContinue) }
@@ -35,7 +36,7 @@ if ($hayCodex) {
 }
 $out.Add("Paralelo máx: $(Get-Prop $cfg 'limites.max_paralelo') · reporte máx: $(Get-Prop $cfg 'limites.max_lineas_reporte') líneas · reintentos/tarea: $(Get-Prop $cfg 'enrutamiento.max_reintentos_por_tarea')")
 $fuentes = @($cfg._fuentes | Where-Object { $_ -notlike '*orquesta.defaults.json' })
-if ($fuentes.Count -gt 0) { $out.Add("Overrides: " + ($fuentes -join ', ')) } else { $out.Add("Overrides: ninguno (solo defaults). Para cambiar modelos: .claude/orquesta.json o ~/.claude/orquesta.json") }
+if ($fuentes.Count -gt 0) { $out.Add("Overrides: " + (($fuentes | ForEach-Object { '`' + $_ + '`' }) -join ', ')) } else { $out.Add("Overrides: ninguno (solo defaults). Para cambiar modelos: .claude/orquesta.json o ~/.claude/orquesta.json") }
 $out.Add("")
 
 # --- PLAN

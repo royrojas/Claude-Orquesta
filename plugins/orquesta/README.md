@@ -176,7 +176,7 @@ plugins/orquesta/
 pwsh -NoProfile -File plugins/orquesta/tests/Test-Orquesta.ps1
 ```
 
-214 aserciones sin dependencias: JSON de manifiestos y hooks, frontmatter de agentes y skills, sintaxis de todos los scripts, merge de config, y cada compuerta alimentada con el JSON que Claude Code manda por stdin (deny/allow/block/nudge, `agent_id`, `stop_hook_active`, `ORQUESTA_GATES`), más el motor Codex contra un `codex` falso (compuertas, flags, REPORTE, thread_id, resume, tokens), la validación de forma de BRIEFs, el aviso de sesión, la salida estructurada (JSON → REPORTE/REVISIÓN) y el doctor.
+216 aserciones sin dependencias: JSON de manifiestos y hooks, frontmatter de agentes y skills, sintaxis de todos los scripts, merge de config, y cada compuerta alimentada con el JSON que Claude Code manda por stdin (deny/allow/block/nudge, `agent_id`, `stop_hook_active`, `ORQUESTA_GATES`), más el motor Codex contra un `codex` falso (compuertas, flags, REPORTE, thread_id, resume, tokens), la validación de forma de BRIEFs, el aviso de sesión, la salida estructurada (JSON → REPORTE/REVISIÓN) y el doctor.
 
 El repo trae un workflow de GitHub Actions (`.github/workflows/tests.yml`) que corre la misma suite en **windows-latest y ubuntu-latest** en cada push. Es la prueba en Windows que no se puede hacer desde Linux: rutas con `\`, shims `.cmd`, finales de línea.
 

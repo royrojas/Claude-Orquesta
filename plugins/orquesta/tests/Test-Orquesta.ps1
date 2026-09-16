@@ -252,6 +252,8 @@ Assert ($estado -match 'estado: \*\*en-ejecucion\*\*') "refleja estado del PLAN"
 Assert ($estado -match 'Bitácora de delegaciones') "resume la bitácora"
 Assert ($estado -notmatch '\$\(' -and $estado -notmatch 'Get-Prop') "sin subexpresiones sin expandir (regresión backtick)"
 Assert ($estado -match '`\.orquesta/PLAN\.md`') "la ruta del PLAN sale con formato de código Markdown"
+Assert ($estado -match '\|\s*\r?\n\s*\r?\nParalelo m') "hay una línea vacía tras la tabla (si no, Markdown absorbe 'Paralelo/Overrides' como filas)"
+Assert ($estado -match 'Overrides: `[^`]*orquesta\.json`') "las rutas de Overrides van entre backticks (Markdown se come el \ antes de _ y .)"
 
 Write-Host "`n== 12. Razones de deny sin caracteres de control ==" -ForegroundColor Cyan
 Remove-Item $planPath -ErrorAction SilentlyContinue

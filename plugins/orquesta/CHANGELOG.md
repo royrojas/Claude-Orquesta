@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.3.9 — 2026-09-16
+- `Show-Estado`: línea vacía después de la tabla de trabajadores. Una tabla Markdown sigue
+  hasta la primera línea vacía, así que "Motor codex", "Paralelo máx" y "Overrides" se
+  renderizaban como filas de una celda dentro de la tabla.
+- `Show-Estado`: las rutas de "Overrides" van entre backticks (se perdían los `\` antes de `_`
+  y `.`: `C:\Cafe Britt\_Programas\...\.claude\orquesta.json` salía como
+  `C:\Cafe Britt_Programas\...orquesta.json`). Misma causa que 1.3.8; era la línea que faltaba.
+- 2 aserciones nuevas (216).
+
 ## 1.3.8 — 2026-09-16
 - Rutas de Windows en la salida de `doctor`, `Initialize-Orquesta` e `Initialize-OrquestaConfig`
   ahora van entre backticks. Claude Code renderiza esa salida como Markdown, y `\_` es un

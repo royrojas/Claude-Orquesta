@@ -1,6 +1,6 @@
 {
   "name": "orquesta",
-  "version": "1.3.8",
+  "version": "1.3.9",
   "description": "Orquestación 'arquitecto' para Claude Code: el modelo principal clarifica, diseña y revisa; subagentes con el modelo que vos configurás implementan. Compuertas (hooks) en PowerShell 7 que hacen cumplir el protocolo. Integra graphify + Obsidian.",
   "author": {
     "name": "Roy Rojas",
