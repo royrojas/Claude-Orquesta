@@ -11,7 +11,7 @@
       "name": "orquesta",
       "source": "./plugins/orquesta",
       "description": "Orquestación 'arquitecto': Fable/Opus diseña y revisa, subagentes con el modelo configurado implementan. Compuertas en PowerShell 7. Integra graphify + Obsidian.",
-      "version": "1.3.4",
+      "version": "1.3.5",
       "author": {
         "name": "Roy Rojas"
       },

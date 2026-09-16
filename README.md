@@ -18,7 +18,7 @@
 
 ## Ejemplo rápido
 
-Con el plugin instalado (arriba) y, si vas a usar Codex, `codex login` ya hecho:
+Con el plugin instalado (arriba) y, si vas a usar Codex, `codex login` ya hecho. No hace falta Obsidian ni graphify: son opcionales, y sin ellos las notas de cierre quedan dentro del repo.
 
 1. Arrancás la sesión con el modelo caro como arquitecto — nunca lo cambia el plugin por vos:
    ```
@@ -32,7 +32,7 @@ Con el plugin instalado (arriba) y, si vas a usar Codex, `codex login` ya hecho:
 4. Delega cada tarea al trabajador que corresponda —subagente de Claude o proceso de Codex CLI, según cómo lo configuraste— y cada entrega pasa por un `revisor` independiente antes de marcarse hecha.
 5. Al cerrar: `documentador` deja ADR + HANDOFF en tu Obsidian, y vos hacés el commit (el plugin nunca commitea).
 
-**¿Cómo le decís qué modelo hace cada tarea?** Con un JSON en `.claude/orquesta.json` del proyecto (o `~/.claude/orquesta.json` para todos los tuyos). Ejemplo real, mezclando Claude y Codex — el que revisa nunca es el mismo proveedor que el que implementó:
+**¿Cómo le decís qué modelo hace cada tarea?** Con un JSON en `.claude/orquesta.json` del proyecto — `/orquesta:init` te lo crea vacío y editable (o `~/.claude/orquesta.json` si querés algo para todos los tuyos). Ejemplo real, mezclando Claude y Codex — el que revisa nunca es el mismo proveedor que el que implementó:
 
 ```json
 {
@@ -265,7 +265,18 @@ Enrutamiento efectivo (trabajador → motor → modelo y de qué archivo sale), 
 
 ### `/orquesta:doctor`
 
-Diagnóstico del entorno: versión de PowerShell y `pwsh` en PATH, hooks y scripts del plugin, config válida y motores de los trabajadores, Codex CLI (versión y login) si algún trabajador lo usa, plugin oficial de OpenAI, graphify, carpeta de Obsidian, git, PLAN. Con "Siguientes pasos" cuando algo falta.
+Diagnóstico del entorno: versión de PowerShell y `pwsh` en PATH, hooks y scripts del plugin, config válida y motores de los trabajadores, Codex CLI (versión y login) si algún trabajador lo usa, plugin oficial de OpenAI, graphify, carpeta de Obsidian, git, PLAN. Con "Siguientes pasos" cuando algo falta. Si el proyecto no tiene `.claude/orquesta.json`, te sugiere `/orquesta:init` (no lo crea él: doctor es solo lectura).
+
+### `/orquesta:init`
+
+Crea `.claude/orquesta.json` en el proyecto si no existe: un esqueleto mínimo y editable con un `_doc` por bloque (`trabajadores`, `motores.codex`, `contexto.obsidian`). **No vuelca los defaults** — vacío de overrides se comporta igual que los defaults y sigue al día cuando el plugin cambia. Si el `CLAUDE.md` del proyecto tiene la sección "Memoria del proyecto (Obsidian)" con una línea `- Decisiones: <ruta absoluta>`, la pre-llena en `carpeta_decisiones` y `carpeta_handoffs` (si la ruta está abreviada o no es absoluta, no inventa nada). Nunca sobreescribe uno existente sin preguntar.
+
+Después te pregunta, en una sola ronda, **quién implementa, quién toma las tareas difíciles y quién revisa/audita** (Claude Sonnet/Opus/Fable o Codex, con o sin modelo específico), **dónde van las notas de cierre** si el CLAUDE.md no lo dijo (dentro del repo — default, no hace falta Obsidian —, en una carpeta de tu vault, o ninguna) y, si elegiste Codex, el razonamiento. Funciona sin Obsidian, sin graphify y sin ningún otro skill: todo eso es opcional. Escribe **solo las claves que elegiste**: si para un rol te quedaste con el default, esa clave no se escribe y sigue al día con el plugin. Te avisa si implementador y revisor quedaron en el mismo modelo del mismo proveedor (perdés la mirada independiente), y cierra mostrando la tabla de `/orquesta:estado` para que veas qué quedó.
+
+```
+/orquesta:init          ← la primera vez que usás orquesta en un proyecto
+/orquesta:estado        ← confirmá qué quedó y de qué archivo sale cada valor
+```
 
 ### Scripts que podés correr a mano
 
@@ -273,6 +284,7 @@ Todos viven en `plugins/orquesta/scripts/` (dentro del plugin instalado, bajo `~
 
 ```powershell
 pwsh -NoProfile -File Initialize-Orquesta.ps1 -Objetivo "..."               # crea .orquesta/ y el PLAN en planificando
+pwsh -NoProfile -File Initialize-OrquestaConfig.ps1                         # lo mismo que /orquesta:init (config del proyecto)
 pwsh -NoProfile -File Test-Brief.ps1 -Brief .orquesta/briefs/BRIEF-01.md    # valida la forma de un BRIEF
 pwsh -NoProfile -File Show-Estado.ps1                                       # lo mismo que /orquesta:estado
 pwsh -NoProfile -File Doctor-Orquesta.ps1                                   # lo mismo que /orquesta:doctor
@@ -287,6 +299,8 @@ La config se resuelve por **merge profundo** de tres archivos; solo escribís la
 1. `plugins/orquesta/config/orquesta.defaults.json` — los defaults del plugin (no lo edites).
 2. `~/.claude/orquesta.json` — vos, para todos tus proyectos.
 3. `<proyecto>/.claude/orquesta.json` — este proyecto (se versiona con el repo, así el equipo comparte el enrutamiento).
+
+En la práctica alcanza con el archivo del proyecto: el global es opcional y no hace falta crearlo (sin él, los dos modelos son idénticos). Para crear el del proyecto sin escribirlo a mano, `/orquesta:init` deja un esqueleto mínimo, editable y pre-llenado desde tu `CLAUDE.md` (ver [§5](#orquestainit)). Si en algún momento no sabés de dónde sale un valor, `/orquesta:estado` lo dice archivo por archivo.
 
 ### Todas las claves
 
@@ -754,6 +768,8 @@ Al cerrar un PLAN, el documentador escribe en las carpetas configuradas (por def
 
 Tu vault no tiene por qué separar "Handoffs" de "Decisiones": si tu estructura solo tiene una carpeta de decisiones (por ejemplo la que arma el skill `configurar-proyecto`, con `Decisiones/` y `Hallazgos/`, sin `Handoffs/`), apuntá `carpeta_handoffs` a la misma carpeta que `carpeta_decisiones` — se distinguen igual por el prefijo del nombre de archivo (`ADR-` vs `HANDOFF-`).
 
+**Sin escribir nada a mano:** si tu `CLAUDE.md` ya tiene la sección "Memoria del proyecto (Obsidian)" con `- Decisiones: <ruta absoluta>` (es lo que deja `configurar-proyecto`), `/orquesta:init` la lee **una vez** al crear la config del proyecto y pre-llena `carpeta_decisiones`/`carpeta_handoffs` con esa misma carpeta. Es la vía recomendada si preferís un archivo por proyecto: explícito, editable, y no tenés que tipear la ruta. Si la línea está abreviada (`...\Proyectos\X\Decisiones`) o no es absoluta, init no la copia y quedan los defaults — nunca adivina.
+
 **`docs/decisiones/ADR-20260908-export-csv-cierres.md`**
 ```markdown
 ---
@@ -865,7 +881,7 @@ Claude-Orquesta/
     ├── schemas/           reporte.schema.json · revision.schema.json
     ├── config/orquesta.defaults.json
     ├── ejemplos/          orquesta.json · orquesta-codex.json
-    ├── tests/             Test-Orquesta.ps1 (191 aserciones) · fake-codex.ps1
+    ├── tests/             Test-Orquesta.ps1 (208 aserciones) · fake-codex.ps1
     ├── README.md          ficha técnica del plugin
     └── CHANGELOG.md
 ```

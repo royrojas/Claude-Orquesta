@@ -36,7 +36,7 @@ try { $h = Get-Content -LiteralPath $hooksPath -Raw | ConvertFrom-Json; foreach 
 Linea $hooksOk "hooks.json válido ($nHooks compuertas) en $root"
 $agentes = @(Get-ChildItem (Join-Path $root 'agents') -Filter *.md -ErrorAction SilentlyContinue).Count
 Linea ($agentes -ge 6) "$agentes agentes en agents/"
-$scriptsFaltan = @(@('Gate-Delegacion','Gate-Edicion','Gate-Cierre','Log-Delegacion','Aviso-Sesion','Show-Estado','Initialize-Orquesta','Test-Brief','Invoke-Codex') | Where-Object { -not (Test-Path (Join-Path $root "scripts/$_.ps1")) })
+$scriptsFaltan = @(@('Gate-Delegacion','Gate-Edicion','Gate-Cierre','Log-Delegacion','Aviso-Sesion','Show-Estado','Initialize-Orquesta','Initialize-OrquestaConfig','Test-Brief','Invoke-Codex') | Where-Object { -not (Test-Path (Join-Path $root "scripts/$_.ps1")) })
 Linea ($scriptsFaltan.Count -eq 0) "scripts completos$(if ($scriptsFaltan) { ' — faltan: ' + ($scriptsFaltan -join ', ') })"
 Linea (Test-OrquestaGatesEnabled) "compuertas $(if (Test-OrquestaGatesEnabled) { 'activas' } else { 'APAGADAS por ORQUESTA_GATES=0' })"
 
@@ -55,6 +55,9 @@ if ($cfg) {
         if ($motor -eq 'claude' -and "$(Get-Prop $p.Value 'modelo')" -eq '') { $modelosRaros += "$($p.Name): sin modelo" }
     }
     Linea ($modelosRaros.Count -eq 0) "trabajadores configurados $(if ($usaCodex) { '(algunos en motor codex)' } else { '(todos en Claude)' })$(if ($modelosRaros) { ' — ' + ($modelosRaros -join '; ') })"
+    if (-not (Test-Path -LiteralPath (Join-Path $Cwd '.claude/orquesta.json'))) {
+        $out.Add("- ○ config del proyecto: no hay .claude/orquesta.json (se usan los defaults del plugin). Para crear uno editable, pre-llenado desde tu CLAUDE.md: /orquesta:init")
+    }
 }
 
 # Codex (solo si se usa)

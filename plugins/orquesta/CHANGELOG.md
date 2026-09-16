@@ -1,5 +1,30 @@
 # Changelog
 
+## 1.3.5 — 2026-09-16
+- **`/orquesta:init`** (`Initialize-OrquestaConfig.ps1`): crea `.claude/orquesta.json` en el
+  proyecto si no existe — un esqueleto mínimo y editable con un `_doc` por bloque
+  (`trabajadores`, `motores.codex`, `contexto.obsidian`). No vuelca los defaults: vacío de
+  overrides se comporta igual que los defaults y sigue al día cuando el plugin cambia. Nunca
+  sobreescribe uno existente. Después, el skill pregunta con `AskUserQuestion` (una ronda)
+  quién implementa, quién toma las tareas difíciles y quién revisa/audita — y el razonamiento
+  de Codex si eligió Codex — y escribe **solo** las claves elegidas sobre el esqueleto (si eligió
+  el default, no escribe la clave). Avisa si implementador y revisor quedaron en el mismo modelo
+  del mismo proveedor. Termina mostrando `Show-Estado` con la fuente de cada valor.
+- Pre-llena `carpeta_decisiones`/`carpeta_handoffs` leyendo la línea `- Decisiones: <ruta>` de
+  la sección "Memoria del proyecto (Obsidian)" del `CLAUDE.md` del proyecto (la que deja el skill
+  `configurar-proyecto`) — solo si es una ruta absoluta y no está abreviada con `...`; si no,
+  no inventa nada y quedan los defaults. Se lee una vez al crear, no en cada corrida.
+- `doctor` sugiere `/orquesta:init` cuando el proyecto no tiene `.claude/orquesta.json`; sigue
+  siendo solo lectura (no crea nada).
+- Decisión de diseño registrada: la config es **por proyecto**; el `~/.claude/orquesta.json`
+  global es opcional y no hace falta crearlo. El merge por clave se mantiene (sin global, ambos
+  modelos son idénticos).
+- El init pregunta también dónde van las notas de cierre (dentro del repo — default, sin
+  Obsidian —, en una carpeta del vault, o ninguna → `contexto.obsidian.usar: false`), solo
+  cuando el CLAUDE.md no las pre-llenó. Funciona sin Obsidian, sin graphify y sin
+  `configurar-proyecto`: todo eso es opcional (aserción explícita del caso sin CLAUDE.md).
+- 17 aserciones nuevas (208).
+
 ## 1.3.4 — 2026-09-16
 - **Rutas absolutas de Obsidian, arregladas de raíz.** `Join-Path` no soportaba un hijo
   absoluto (`Show-Estado.ps1`/`Doctor-Orquesta.ps1` armaban una ruta inválida y decían "no

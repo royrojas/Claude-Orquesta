@@ -110,6 +110,8 @@ $skArq = Get-Content (Join-Path $Root 'skills/arquitecto/SKILL.md') -Raw -Encodi
 Assert ($skArq -match '`inherit`' -and $skArq -match 'ID completo' -and $skArq -match '-Intento N\+1 -Hallazgos') "arquitecto: regla de model (inherit / ID completo) y reintento codex documentados"
 Assert ($skArq -match 'preferencia permanente' -and $skArq -match 'AskUserQuestion' -and $skArq -match '\.claude/orquesta\.json' -and $skArq -match 'fusion') "arquitecto: pregunta antes de persistir un override permanente en orquesta.json"
 Assert ($skArq -match 'rutas resueltas y literales' -and $skArq -match 'nunca le digas solo') "arquitecto: le pasa al documentador las rutas de Obsidian resueltas, no en abstracto"
+$skInit = Get-Content (Join-Path $Root 'skills/init/SKILL.md') -Raw -Encoding UTF8
+Assert ($skInit -match 'AskUserQuestion' -and $skInit -match 'implementador-senior' -and $skInit -match 'revisor' -and $skInit -match 'solo las claves que eligi' -and $skInit -match 'usar: false') "init: pregunta modelos y destino de las notas (repo / vault / ninguna) y escribe solo las claves elegidas"
 foreach ($t in @('PLAN.md', 'BRIEF.md', 'REPORTE.md', 'ADR.md', 'HANDOFF.md')) { Assert (Test-Path (Join-Path $Root "skills/arquitecto/plantillas/$t")) "plantilla $t existe" }
 foreach ($r in @('enrutamiento.md', 'brief-checklist.md', 'revision-checklist.md')) { Assert (Test-Path (Join-Path $Root "skills/arquitecto/referencias/$r")) "referencia $r existe" }
 
@@ -355,6 +357,42 @@ $ex = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Initialize-O
 Assert ($LASTEXITCODE -eq 0 -and (Get-Content $planPath -Raw) -match 'orquesta:qa \| claude \| haiku \|') "Initialize-Orquesta incluye al trabajador extra en la tabla del PLAN"
 $ex = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Doctor-Orquesta.ps1') -Cwd $tmp 2>&1 | Out-String
 Assert ($LASTEXITCODE -eq 0 -and $ex -notmatch 'cannot be found' -and $ex -match 'todos en Claude') "Doctor tolera el trabajador extra"
+
+Write-Host "`n== 18. Initialize-OrquestaConfig (/orquesta:init) ==" -ForegroundColor Cyan
+$tmpInit = Join-Path ([IO.Path]::GetTempPath()) ("orquesta-init-" + [Guid]::NewGuid().ToString('N').Substring(0, 8))
+New-Item -ItemType Directory -Path $tmpInit -Force | Out-Null
+$cfgPath  = Join-Path $tmpInit '.claude/orquesta.json'
+$vaultDec = Join-Path ([IO.Path]::GetTempPath()) 'vault-x/Proyectos/T/Decisiones'
+Set-Content (Join-Path $tmpInit 'CLAUDE.md') (@('# T', '', '## Memoria del proyecto (Obsidian)', '', "- Mapa: ``$vaultDec/../_Mapa - T.md``", "- Decisiones: ``$vaultDec$([IO.Path]::DirectorySeparatorChar)``", "- Hallazgos: ``$vaultDec/../Hallazgos``") -join "`n") -Encoding UTF8
+$doc0 = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Doctor-Orquesta.ps1') -Cwd $tmpInit 2>&1 | Out-String
+Assert ($doc0 -match 'no hay \.claude/orquesta\.json' -and $doc0 -match '/orquesta:init') "doctor sin config de proyecto sugiere /orquesta:init"
+Assert (-not (Test-Path $cfgPath)) "doctor sigue siendo solo lectura: no crea la config"
+$r = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Initialize-OrquestaConfig.ps1') -Cwd $tmpInit 2>&1 | Out-String
+Assert ($LASTEXITCODE -eq 0 -and (Test-Path $cfgPath) -and $r -match 'pre-llenadas desde CLAUDE.md') "init crea .claude/orquesta.json y avisa qué pre-llenó"
+$gen = Get-Content $cfgPath -Raw -Encoding UTF8 | ConvertFrom-Json
+Assert ($gen.contexto.obsidian.carpeta_decisiones -eq $vaultDec -and $gen.contexto.obsidian.carpeta_handoffs -eq $vaultDec) "init toma la ruta de '- Decisiones:' del CLAUDE.md, sin la barra final, para decisiones y handoffs"
+Assert ($null -eq $gen.trabajadores.PSObject.Properties['implementador'] -and $null -ne $gen.trabajadores.PSObject.Properties['_doc']) "init no vuelca los defaults: trabajadores solo tiene _doc"
+$antes = Get-Content $cfgPath -Raw
+$r2 = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Initialize-OrquestaConfig.ps1') -Cwd $tmpInit 2>&1 | Out-String
+Assert ($LASTEXITCODE -eq 0 -and $r2 -match 'ya existe' -and (Get-Content $cfgPath -Raw) -eq $antes) "init es idempotente: no sobreescribe una config existente"
+$est = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Show-Estado.ps1') -Cwd $tmpInit 2>&1 | Out-String
+Assert ($LASTEXITCODE -eq 0 -and $est -notmatch 'orquesta:_doc' -and $est -match 'orquesta:implementador \| claude \| sonnet') "la config generada carga: los _doc se ignoran y los defaults siguen vivos"
+$fuentes = @((& $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Resolve-OrquestaConfig.ps1') -Cwd $tmpInit | ConvertFrom-Json)._fuentes)
+Assert ($fuentes -contains $cfgPath) "la config generada aparece como fuente del proyecto en la config efectiva"
+$doc1 = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Doctor-Orquesta.ps1') -Cwd $tmpInit 2>&1 | Out-String
+Assert ($doc1 -notmatch '/orquesta:init') "con config de proyecto, doctor ya no sugiere init"
+Remove-Item $tmpInit -Recurse -Force -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Path $tmpInit -Force | Out-Null
+Set-Content (Join-Path $tmpInit 'CLAUDE.md') "## Memoria del proyecto (Obsidian)`n- Decisiones: ``...\Proyectos\T\Decisiones\``" -Encoding UTF8
+$r3 = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Initialize-OrquestaConfig.ps1') -Cwd $tmpInit 2>&1 | Out-String
+$gen2 = Get-Content $cfgPath -Raw -Encoding UTF8 | ConvertFrom-Json
+Assert ($null -eq $gen2.contexto.obsidian.PSObject.Properties['carpeta_decisiones'] -and $r3 -match 'no encontre') "ruta abreviada con '...' en CLAUDE.md: init no la copia y cae a los defaults"
+Remove-Item $tmpInit -Recurse -Force -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Path $tmpInit -Force | Out-Null
+$r4 = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Initialize-OrquestaConfig.ps1') -Cwd $tmpInit 2>&1 | Out-String
+$gen3 = Get-Content $cfgPath -Raw -Encoding UTF8 | ConvertFrom-Json
+Assert ($LASTEXITCODE -eq 0 -and $null -eq $gen3.contexto.obsidian.PSObject.Properties['carpeta_decisiones'] -and $r4 -match 'docs/decisiones') "sin CLAUDE.md ni Obsidian ni graphify: init igual crea la config y deja las notas dentro del repo"
+Remove-Item $tmpInit -Recurse -Force -ErrorAction SilentlyContinue
 
 Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
 Write-Host "`n== Resultado: $ok ok, $fallos fallos ==" -ForegroundColor $(if ($fallos) { 'Red' } else { 'Green' })

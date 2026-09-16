@@ -248,6 +248,25 @@ function Resolve-ObsidianPath {
     return (Join-Path $Cwd $Valor)
 }
 
+function Get-ObsidianCarpetaDesdeClaudeMd {
+    <#
+      Busca en <Cwd>/CLAUDE.md una línea "- Decisiones: `<ruta>`" (la sección "Memoria del proyecto (Obsidian)"
+      que deja el skill configurar-proyecto). Devuelve la ruta solo si es absoluta y no está abreviada con "...";
+      en cualquier otro caso $null. Nunca adivina: lo usa Initialize-OrquestaConfig para pre-llenar la config
+      del proyecto una sola vez, no se parsea en cada corrida.
+    #>
+    param([string]$Cwd)
+    $md = Join-Path $Cwd 'CLAUDE.md'
+    if (-not (Test-Path -LiteralPath $md)) { return $null }
+    foreach ($l in (Get-Content -LiteralPath $md -Encoding UTF8)) {
+        if ($l -match '^\s*[-*]\s*Decisiones\s*:\s*`?([^`]+?)`?\s*$') {
+            $ruta = $Matches[1].Trim().TrimEnd('\', '/')
+            if ($ruta -notmatch '\.\.\.' -and [IO.Path]::IsPathRooted($ruta)) { return $ruta }
+        }
+    }
+    return $null
+}
+
 function Get-RelativePathSafe {
     # Ruta relativa normalizada con '/' respecto a $Base; si no está bajo $Base devuelve la absoluta normalizada.
     param([string]$Path, [string]$Base)
