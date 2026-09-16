@@ -255,7 +255,7 @@ La config se resuelve por **merge profundo** de tres archivos; solo escribís la
 | Clave | Default | Qué controla |
 |---|---|---|
 | `orquestador.modelo` | `fable` | Modelo esperado para la sesión del arquitecto. Solo declara la expectativa: el modelo real lo fijás con `claude --model` o `/model`, y el aviso de "no coincide" lo da el arquitecto por autoconocimiento (best-effort; ningún script puede leer el modelo de la sesión). |
-| `trabajadores.<rol>.modelo` | ver §7 | Con motor claude: `haiku`, `sonnet`, `opus`, `fable` (alias del Agent tool) o `inherit` (el modelo de la sesión, es decir el del arquitecto). Los IDs completos (`claude-sonnet-5`) hoy **no** los acepta el Agent tool: usá alias. Con motor codex: un modelo de Codex (`gpt-5.x`); vacío o alias de Claude → cae a `motores.codex.modelo`. |
+| `trabajadores.<rol>.modelo` | ver §7 | Con motor claude: `haiku`, `sonnet`, `opus`, `fable` (alias del Agent tool) o `inherit` (el modelo de la sesión, es decir el del arquitecto). Los IDs completos (`claude-sonnet-5`) no los acepta el Agent tool: usá alias (si ponés uno, el arquitecto lo reduce al alias que contiene y te avisa). Con motor codex: un modelo de Codex (`gpt-5.x`); vacío o alias de Claude → cae a `motores.codex.modelo`. |
 | `trabajadores.<rol>.motor` | `claude` | `claude` (subagente) o `codex` (proceso `codex exec`). |
 | `trabajadores.<rol>.esfuerzo` | según rol | Documentativo; el esfuerzo real está en el frontmatter del agente. |
 | `motores.codex.comando` | `codex` | Ejecutable de Codex (o ruta a un `.ps1` para pruebas). |
@@ -427,7 +427,7 @@ El arquitecto no usa el Agent tool: corre `scripts/Invoke-Codex.ps1 -Rol impleme
 3. Ejecuta `codex exec --json --sandbox workspace-write -C <repo> -o <reporte> [-m modelo] -c model_reasoning_effort="high" --output-schema schemas/reporte.schema.json -` con el prompt por stdin.
 4. Pide **salida estructurada**: JSON contra `schemas/reporte.schema.json` (implementadores) o `schemas/revision.schema.json` (revisor/auditor). Guarda el JSON crudo y lo **renderiza al mismo formato REPORTE/REVISIÓN** que producen los trabajadores de Claude. Si Codex devolviera texto en vez de JSON, cae al modo texto sin romper nada.
 5. Registra en la bitácora agente, modelo, duración y **tokens** de Codex.
-6. Guarda el `thread_id` de Codex. En un reintento (`-Intento 2 -Hallazgos <dictamen>`) usa `codex exec resume <thread_id>` para que Codex conserve el contexto del intento anterior. Ojo: el estado se guarda por BRIEF, no por tier, así que si el intento 2 **escala** a `implementador-senior` también reanuda el hilo del implementador (con el modelo del senior si es distinto). Si preferís que el senior arranque limpio, pasá `-SinResume`.
+6. Guarda el `thread_id` de Codex y el rol que corrió. En un reintento del **mismo rol** (`-Intento 2 -Hallazgos <dictamen>`) usa `codex exec resume <thread_id>` para que Codex conserve el contexto del intento anterior; al **escalar** a `implementador-senior` arranca un hilo limpio (`-SinResume` lo fuerza también en el mismo rol). Los flags que `exec resume` acepta (`--json`, `-o`, `--output-schema`, `-m`, `-c`) van después del subcomando, y si `resume` no reescribe el archivo `-o`, el reporte se toma de los eventos JSONL en vez de reusar el del intento anterior.
 
 Archivos que deja en `.orquesta/reportes/`: `REPORTE-01-codex.md` (renderizado), `REPORTE-01-codex.json` (crudo), `.codex-REPORTE-01.jsonl` (eventos), `.codex-REPORTE-01.log` (stderr) y `.codex-REPORTE-01.json` (estado: thread_id, intentos).
 
@@ -440,6 +440,10 @@ Lo que no cambia: el arquitecto es siempre la sesión de Claude Code, el BRIEF e
 ### Sandbox y red
 
 `workspace-write` permite editar el repo pero **bloquea la red**. Si tu `dotnet restore` necesita bajar paquetes dentro de la corrida, restaurá antes de delegar o usá `"sandbox": "danger-full-access"` (solo en tu máquina, nunca en CI). `read-only` sirve para `-Rol revisor` o `-Rol cartografo`.
+
+### Seguridad de la config
+
+`motores.codex.comando`, `args_extra` y `sandbox` pueden venir del `.claude/orquesta.json` **del proyecto**, y ese archivo viaja con el repo: en un clon ajeno decide qué ejecutable corre el arquitecto y con qué permisos. Por eso `/orquesta:doctor` y `/orquesta:estado` lo marcan cuando el proyecto redefine alguna de las tres. Si el override es tuyo, movelo a `~/.claude/orquesta.json`; si el repo es de otro, leé ese archivo antes de delegar.
 
 ## 9. El PLAN
 
@@ -758,8 +762,7 @@ Dejalo en `en-ejecucion` con las tareas `[x]`; mañana `/orquesta:revisar final`
 | Codex: "not inside a trusted directory / git repo" | El proyecto no es un repo git | El wrapper agrega `--skip-git-repo-check`; mejor `git init`. |
 | El aviso de sesión no aparece | El PLAN está `cerrado` o no existe | Es el comportamiento esperado. |
 | `/orquesta:estado` o `/orquesta:doctor` dicen "(no existe aún)" de una carpeta de Obsidian que sí existe | Configuraste `carpeta_decisiones`/`carpeta_handoffs` como ruta absoluta; hoy se resuelven relativas al repo | Usá una carpeta dentro del repo (o un symlink/junction desde tu vault). El soporte de rutas absolutas está en el backlog. |
-| La delegación falla con un error de validación del parámetro `model` | Configuraste `modelo: inherit` o un ID completo (`claude-sonnet-5`) | El Agent tool solo acepta `haiku`/`sonnet`/`opus`/`fable`. Usá un alias; `inherit` todavía no lo traduce el arquitecto. |
-| `/orquesta:estado` falla con "The property 'esfuerzo' cannot be found" | Agregaste un trabajador propio en `.claude/orquesta.json` sin `esfuerzo`/`rol` | Copiá las cuatro claves (`modelo`, `motor`, `esfuerzo`, `rol`) del default. Bug conocido, pendiente de arreglo. |
+| La delegación falla con un error de validación del parámetro `model` | Configuraste un ID completo (`claude-sonnet-5`) y el arquitecto lo pasó tal cual (plugin anterior a 1.3.1) | El Agent tool solo acepta `haiku`/`sonnet`/`opus`/`fable`. Desde 1.3.1 el arquitecto lo reduce al alias y omite `model:` con `inherit`; actualizá el plugin y, mejor, usá alias en la config. |
 | El badge del README sale gris | El workflow no corrió aún o el nombre del repo cambió | Mirá la pestaña Actions. |
 
 ## 17. Convivencia con el plugin oficial de OpenAI
@@ -787,7 +790,7 @@ Claude-Orquesta/
     ├── schemas/           reporte.schema.json · revision.schema.json
     ├── config/orquesta.defaults.json
     ├── ejemplos/          orquesta.json · orquesta-codex.json
-    ├── tests/             Test-Orquesta.ps1 (166 aserciones) · fake-codex.ps1
+    ├── tests/             Test-Orquesta.ps1 (181 aserciones) · fake-codex.ps1
     ├── README.md          ficha técnica del plugin
     └── CHANGELOG.md
 ```

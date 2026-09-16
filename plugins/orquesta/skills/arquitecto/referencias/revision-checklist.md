@@ -5,7 +5,7 @@ El arquitecto **no revisa código**: revisa el REPORTE y decide qué mandar al r
 ## Triage del REPORTE (2 minutos)
 1. `Estado`:
    - `COMPLETADO` → al revisor (y al auditor si aplica).
-   - `PARCIAL` → ¿lo que falta es de esta tarea? Si sí, reenviá al mismo agente con lo faltante (`SendMessage`), no lo mandes a revisión a medias. Si es de otra tarea, anotalo y mandá a revisar lo hecho.
+   - `PARCIAL` → ¿lo que falta es de esta tarea? Si sí, reenviá al mismo trabajador con lo faltante (`SendMessage` en motor claude; `Invoke-Codex.ps1 -Intento N+1 -Hallazgos <ruta>` en codex), no lo mandes a revisión a medias. Si es de otra tarea, anotalo y mandá a revisar lo hecho.
    - `BLOQUEADO` → respondé la pregunta vos o pausá y preguntá al usuario. Nunca la ignores ni la "interpretes" hacia el trabajador.
 2. Criterios: ¿todos los del BRIEF están listados? ¿los ✓ tienen evidencia (archivo:línea / salida)? Un ✓ sin evidencia se manda al revisor igual, pero anotalo: es señal de trabajador apurado.
 3. `Propuestas` y decisiones tomadas por el trabajador: ratificalas o revertilas **ahora**, antes de que la siguiente tarea construya encima.
@@ -27,5 +27,5 @@ Cualquier señal de `seguridad_si` en la tarea (SQL, capa de datos, entrada exte
 
 ## Después del dictamen
 - `APROBADO` → `- [x]` en el PLAN + fila en `## Bitácora de revisión` (trabajador, modelo, intento, revisor, resultado).
-- `RECHAZADO` → copiá al BRIEF los [Crítico]/[Debe] como sección `## Hallazgos a resolver (intento N+1)`, subí `intento:` en el frontmatter y reenviá al mismo agente. Al llegar a `max_reintentos_por_tarea`, escalá según `enrutamiento.md`.
+- `RECHAZADO` → copiá al BRIEF los [Crítico]/[Debe] como sección `## Hallazgos a resolver (intento N+1)`, subí `intento:` en el frontmatter y reenviá al mismo trabajador (`SendMessage`; en codex, `Invoke-Codex.ps1 -Intento N+1 -Hallazgos <ruta del dictamen>`). Al llegar a `max_reintentos_por_tarea`, escalá según `enrutamiento.md`.
 - Hallazgos [Sugerencia] → decidís vos: se hacen en esta tarea, van a una tarea nueva, o a `## Diferido`.

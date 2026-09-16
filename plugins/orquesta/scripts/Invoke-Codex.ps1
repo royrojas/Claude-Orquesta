@@ -6,7 +6,8 @@
   - Aplica las mismas compuertas que Gate-Delegacion (PLAN en ejecución + BRIEF) para roles que escriben.
   - Inyecta como instrucciones el cuerpo del agente correspondiente (agents/<rol>.md), así el rol es idéntico en ambos motores.
   - Escribe el reporte en .orquesta/reportes/<TIPO>-NN-codex.md, registra spawn/stop (con tokens) en la bitácora
-    y guarda el thread_id para que los reintentos usen `codex exec resume <id>` conservando el contexto.
+    y guarda el thread_id y el rol: un reintento del MISMO rol usa `codex exec resume <id>` conservando el contexto;
+    al escalar de tier (otro rol) arranca un hilo limpio. -SinResume fuerza hilo limpio siempre.
   - Imprime el reporte final por stdout para el arquitecto.
 
 .EXAMPLE
@@ -138,24 +139,28 @@ $cmd = "$(Get-Prop $mot 'comando')"; if (-not $cmd) { $cmd = 'codex' }
 $esGit = $false
 try { & git -C $Cwd rev-parse --is-inside-work-tree 2>$null | Out-Null; $esGit = ($LASTEXITCODE -eq 0) } catch { }
 
-$args_ = @('exec', '--json', '--sandbox', "$(Get-Prop $mot 'sandbox')", '-C', $Cwd, '-o', $outFile)
-if ($Modelo) { $args_ += @('-m', $Modelo) }
+# `codex exec resume` no acepta --sandbox ni -C (van antes del subcomando); --json, -o, --output-schema, -m, -c y
+# --skip-git-repo-check son flags propios de resume, así que para que los honre seguro van después de `resume <id>`.
+$argsBase   = @('exec', '--sandbox', "$(Get-Prop $mot 'sandbox')", '-C', $Cwd)
+$argsSalida = @('--json', '-o', $outFile)
+if ($Modelo) { $argsSalida += @('-m', $Modelo) }
 $razon = "$(Get-Prop $mot 'razonamiento')"
-if ($razon) { $args_ += @('-c', "model_reasoning_effort=`"$razon`"") }
-if ($schemaPath) { $args_ += @('--output-schema', $schemaPath) }
-if (-not $esGit) { $args_ += '--skip-git-repo-check' }
-$extra = Get-Prop $mot 'args_extra'; if ($extra) { $args_ += @($extra) }
+if ($razon) { $argsSalida += @('-c', "model_reasoning_effort=`"$razon`"") }
+if ($schemaPath) { $argsSalida += @('--output-schema', $schemaPath) }
+if (-not $esGit) { $argsSalida += '--skip-git-repo-check' }
+$extra = Get-Prop $mot 'args_extra'; if ($extra) { $argsSalida += @($extra) }
 
-
+# Se reanuda el hilo solo si el intento anterior fue del MISMO rol: al escalar de tier, el senior arranca limpio.
 $threadPrevio = if ($state) { "$(Get-Prop $state 'thread_id')" } else { '' }
-$usaResume = ($Intento -gt 1) -and $threadPrevio -and -not $SinResume
+$rolPrevio    = if ($state) { "$(Get-Prop $state 'rol')" } else { '' }
+$usaResume = ($Intento -gt 1) -and $threadPrevio -and ($rolPrevio -eq $Rol) -and -not $SinResume
 if ($usaResume) {
     # Prompt corto por argumento (seguro para shims .cmd); el contenido completo va a un archivo.
     $reintentoFile = Join-Path $reportes "REINTENTO-$nn-$Intento.md"
     Set-Content -LiteralPath $reintentoFile -Value $prompt -Encoding UTF8
-    $args_ += @('resume', $threadPrevio, "Leé el archivo '$reintentoFile' y aplicá lo que indica. Tu último mensaje debe ser solo el reporte.")
+    $args_ = $argsBase + @('resume', $threadPrevio) + $argsSalida + @("Leé el archivo '$reintentoFile' y aplicá lo que indica. Tu último mensaje debe ser solo el reporte.")
 } else {
-    $args_ += '-'   # prompt por stdin
+    $args_ = $argsBase + $argsSalida + @('-')   # prompt por stdin
 }
 
 Add-BitacoraEntry -Cwd $Cwd -Config $cfg -Entry @{
@@ -164,6 +169,8 @@ Add-BitacoraEntry -Cwd $Cwd -Config $cfg -Entry @{
 }
 
 $inicio = Get-Date
+# El REPORTE de un intento anterior queda en disco: solo cuenta si codex lo (re)escribió en esta corrida.
+$outAntes = if (Test-Path -LiteralPath $outFile) { (Get-Item -LiteralPath $outFile).LastWriteTimeUtc } else { $null }
 $exit = 0
 $ErrorActionPreference = 'Continue'            # el stderr de codex no debe convertirse en excepción
 $PSNativeCommandUseErrorActionPreference = $false
@@ -196,7 +203,8 @@ if (Test-Path -LiteralPath $jsonlFile) {
         if ($item -and "$(Get-Prop $item 'type')" -eq 'agent_message') { $t = Get-Prop $item 'text'; if ($t) { $ultimoMsg = "$t" } }
     }
 }
-$crudo = if (Test-Path -LiteralPath $outFile) { Get-Content -LiteralPath $outFile -Raw -Encoding UTF8 } else { $ultimoMsg }
+$outFresco = (Test-Path -LiteralPath $outFile) -and ($null -eq $outAntes -or (Get-Item -LiteralPath $outFile).LastWriteTimeUtc -gt $outAntes)
+$crudo = if ($outFresco) { Get-Content -LiteralPath $outFile -Raw -Encoding UTF8 } else { $ultimoMsg }
 if (-not $crudo) { $crudo = '' }
 
 # Salida estructurada: si el mensaje final es JSON válido, se guarda como .json y se renderiza al formato REPORTE/REVISIÓN.
@@ -212,7 +220,7 @@ if ($usaEsquema -and $crudo.TrimStart().StartsWith('{')) {
         Set-Content -LiteralPath $outFile -Value $reporte -Encoding UTF8
     }
 }
-if (-not (Test-Path -LiteralPath $outFile) -and $reporte) { Set-Content -LiteralPath $outFile -Value $reporte -Encoding UTF8 }
+if (-not $outFresco -and $reporte) { Set-Content -LiteralPath $outFile -Value $reporte -Encoding UTF8 }
 
 $estado = if ($estructurado) {
     $e = Get-Prop $jsonSalida 'estado'; if (-not $e) { $e = Get-Prop $jsonSalida 'dictamen' }; "$e"

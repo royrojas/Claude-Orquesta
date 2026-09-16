@@ -6,7 +6,7 @@
     "_doc": "Modelo con el que debe correr la sesión principal (el arquitecto). El skill no puede cambiar el modelo de la sesión: arrancá con `claude --model fable` o usá /model fable. Si estás en otro modelo, el arquitecto te lo avisa una vez y sigue."
   },
   "trabajadores": {
-    "_doc": "Modelo y motor por trabajador. motor: 'claude' (subagente de Claude Code; modelo = haiku | sonnet | opus | fable | inherit | ID completo) o 'codex' (proceso `codex exec` de OpenAI Codex CLI; modelo = el de Codex, vacío = su default). El arquitecto pasa el modelo en cada llamada, así que manda sobre el frontmatter del agente.",
+    "_doc": "Modelo y motor por trabajador. motor: 'claude' (subagente de Claude Code; modelo = haiku | sonnet | opus | fable | inherit; los IDs completos no los acepta el Agent tool) o 'codex' (proceso `codex exec` de OpenAI Codex CLI; modelo = el de Codex, vacío = su default). El arquitecto pasa el modelo en cada llamada, así que manda sobre el frontmatter del agente.",
     "cartografo": {
       "modelo": "haiku",
       "motor": "claude",

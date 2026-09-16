@@ -47,8 +47,8 @@ $tabla.Add('| Trabajador | Motor | Modelo | Cuándo |')
 $tabla.Add('|---|---|---|---|')
 foreach ($p in $cfg.trabajadores.PSObject.Properties) {
     if ($p.Name -like '_*') { continue }
-    $motor = "$(Get-Prop $p.Value 'motor')"; if (-not $motor) { $motor = 'claude' }
-    $tabla.Add("| orquesta:$($p.Name) | $motor | $($p.Value.modelo) | $($p.Value.rol) |")
+    $t = Get-TrabajadorInfo -Config $cfg -Nombre $p.Name
+    $tabla.Add("| orquesta:$($t.Nombre) | $($t.Motor) | $($t.Modelo) | $($t.Rol) |")
 }
 
 $tpl = Get-Content -LiteralPath (Join-Path $root 'skills/arquitecto/plantillas/PLAN.md') -Raw -Encoding UTF8

@@ -70,6 +70,8 @@ if ($usaCodex) {
         Linea $logueado "login de Codex: $(if ($login) { "$login".Trim() } else { 'no se pudo determinar' })" 'Ejecutá: codex login (o codex login --device-auth)'
     }
     Linea (Test-Path (Join-Path $root 'schemas/reporte.schema.json')) "esquemas de salida estructurada presentes (schemas/)"
+    $riesgos = @(Get-OverridesRiesgosos -Cwd $Cwd)
+    Linea ($riesgos.Count -eq 0) "$(if ($riesgos.Count -eq 0) { 'motores.codex.comando/args_extra/sandbox no vienen del proyecto' } else { 'el .claude/orquesta.json del proyecto redefine ' + ($riesgos -join ' · ') + ' (viaja con el repo: en un clon ajeno decide qué ejecutable corre)' })" 'Revisá motores.codex.* en .claude/orquesta.json antes de delegar; si es tuyo, movelo a ~/.claude/orquesta.json'
 }
 
 # Plugin oficial de OpenAI (opcional)
@@ -78,16 +80,20 @@ $companion = $null
 try { $companion = Get-ChildItem -Path (Join-Path $claudeDir 'plugins') -Recurse -Filter 'codex-companion.mjs' -ErrorAction SilentlyContinue | Select-Object -First 1 } catch { }
 $out.Add("- $(if ($companion) { '✓' } else { '○' }) plugin oficial de OpenAI (codex@openai-codex): $(if ($companion) { 'instalado — /codex:review y /codex:adversarial-review disponibles' } else { 'no instalado (opcional: /plugin marketplace add openai/codex-plugin-cc)' })")
 
-# graphify / Obsidian / git en el proyecto
+# graphify / Obsidian / git en el proyecto (solo si la config cargó: sin ella no hay rutas que resolver)
 $gfCmd = $null -ne (Get-Command graphify -ErrorAction SilentlyContinue)
-$gfDir = Join-Path $Cwd (Get-Prop $cfg 'contexto.graphify.salida')
-$out.Add("- $(if (Test-Path $gfDir) { '✓' } else { '○' }) graphify: $(if (Test-Path $gfDir) { "grafo en $(Get-Prop $cfg 'contexto.graphify.salida')/" + $(if (Test-Path (Join-Path $gfDir 'needs_update')) { ' (desactualizado)' } else { '' }) } else { 'sin grafo en este proyecto' })$(if ($gfCmd) { ' · CLI disponible' } else { ' · CLI no encontrado (opcional)' })")
-$dec = Join-Path $Cwd (Get-Prop $cfg 'contexto.obsidian.carpeta_decisiones')
-$out.Add("- $(if (Test-Path $dec) { '✓' } else { '○' }) Obsidian: carpeta de decisiones $(if (Test-Path $dec) { 'existe' } else { 'aún no existe (se crea al cerrar el primer PLAN)' })")
+if ($cfg) {
+    $gfDir = Join-Path $Cwd (Get-Prop $cfg 'contexto.graphify.salida')
+    $out.Add("- $(if (Test-Path $gfDir) { '✓' } else { '○' }) graphify: $(if (Test-Path $gfDir) { "grafo en $(Get-Prop $cfg 'contexto.graphify.salida')/" + $(if (Test-Path (Join-Path $gfDir 'needs_update')) { ' (desactualizado)' } else { '' }) } else { 'sin grafo en este proyecto' })$(if ($gfCmd) { ' · CLI disponible' } else { ' · CLI no encontrado (opcional)' })")
+    $dec = Join-Path $Cwd (Get-Prop $cfg 'contexto.obsidian.carpeta_decisiones')
+    $out.Add("- $(if (Test-Path $dec) { '✓' } else { '○' }) Obsidian: carpeta de decisiones $(if (Test-Path $dec) { 'existe' } else { 'aún no existe (se crea al cerrar el primer PLAN)' })")
+}
 $gitOk = $false; try { & git -C $Cwd rev-parse --is-inside-work-tree 2>$null | Out-Null; $gitOk = ($LASTEXITCODE -eq 0) } catch { }
 Linea $gitOk "git: $(if ($gitOk) { 'repositorio detectado' } else { 'este directorio no es un repo git (Codex necesitará --skip-git-repo-check; ya lo agrega el wrapper)' })"
-$plan = Get-PlanInfo -Cwd $Cwd -Config $cfg
-$out.Add("- ○ PLAN: $(if ($plan.Existe) { "estado $($plan.Estado), $($plan.Abiertos) abiertas" } else { 'ninguno en este proyecto' })")
+if ($cfg) {
+    $plan = Get-PlanInfo -Cwd $Cwd -Config $cfg
+    $out.Add("- ○ PLAN: $(if ($plan.Existe) { "estado $($plan.Estado), $($plan.Abiertos) abiertas" } else { 'ninguno en este proyecto' })")
+}
 
 if ($siguientes.Count -gt 0) { $out.Add(''); $out.Add('### Siguientes pasos'); foreach ($s in $siguientes | Select-Object -Unique) { $out.Add("1. $s") } }
 $out -join "`n"

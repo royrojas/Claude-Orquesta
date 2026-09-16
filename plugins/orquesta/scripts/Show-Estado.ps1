@@ -20,16 +20,18 @@ $out.Add("|---|---|---|---|")
 $hayCodex = $false
 foreach ($p in $cfg.trabajadores.PSObject.Properties) {
     if ($p.Name -like '_*') { continue }
-    $motor = "$(Get-Prop $p.Value 'motor')"; if (-not $motor) { $motor = 'claude' }
-    if ($motor -eq 'codex') { $hayCodex = $true }
-    $modelo = "$(Get-Prop $p.Value 'modelo')"
-    if ($motor -eq 'codex' -and ($modelo -in @('haiku','sonnet','opus','fable','inherit',''))) { $modelo = if ("$(Get-Prop $cfg 'motores.codex.modelo')") { "$(Get-Prop $cfg 'motores.codex.modelo')" } else { 'codex-default' } }
-    $out.Add("| orquesta:$($p.Name) | $motor | $modelo | $($p.Value.esfuerzo) |")
+    $t = Get-TrabajadorInfo -Config $cfg -Nombre $p.Name
+    if ($t.Motor -eq 'codex') { $hayCodex = $true }
+    $out.Add("| orquesta:$($t.Nombre) | $($t.Motor) | $($t.Modelo) | $($t.Esfuerzo) |")
 }
 if ($hayCodex) {
     $cmdCodex = "$(Get-Prop $cfg 'motores.codex.comando')"; if (-not $cmdCodex) { $cmdCodex = 'codex' }
     $disp = if ($cmdCodex -like '*.ps1') { Test-Path -LiteralPath $cmdCodex } else { $null -ne (Get-Command $cmdCodex -ErrorAction SilentlyContinue) }
     $out.Add("Motor codex: comando ``$cmdCodex`` $(if ($disp) {'disponible'} else {'**NO ENCONTRADO** (instalá Codex CLI y corré codex login)'}) · sandbox: $(Get-Prop $cfg 'motores.codex.sandbox') · razonamiento: $(Get-Prop $cfg 'motores.codex.razonamiento')")
+    $riesgos = @(Get-OverridesRiesgosos -Cwd $Cwd)
+    if ($riesgos.Count -gt 0) {
+        $out.Add("**Atención:** el .claude/orquesta.json de este proyecto redefine " + ($riesgos -join ' · ') + ". Ese archivo viaja con el repo: en un clon ajeno decide qué ejecutable corre y con qué sandbox. Revisalo antes de delegar.")
+    }
 }
 $out.Add("Paralelo máx: $(Get-Prop $cfg 'limites.max_paralelo') · reporte máx: $(Get-Prop $cfg 'limites.max_lineas_reporte') líneas · reintentos/tarea: $(Get-Prop $cfg 'enrutamiento.max_reintentos_por_tarea')")
 $fuentes = @($cfg._fuentes | Where-Object { $_ -notlike '*orquesta.defaults.json' })

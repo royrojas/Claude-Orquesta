@@ -10,6 +10,7 @@ for ($i = 0; $i -lt $argv.Count; $i++) {
         '-'      { $leerStdin = $true }
     }
 }
+if ($resume -and $env:FAKE_CODEX_SIN_O) { $out = $null }   # simula un `resume` que no reescribe el archivo -o
 $prompt = if ($leerStdin) { [Console]::In.ReadToEnd() } else { ($argv | Select-Object -Last 1) }
 [Console]::Error.WriteLine("fake-codex: argumentos: $($argv -join ' ')")
 [Console]::Error.WriteLine("fake-codex: prompt de $($prompt.Length) chars; contiene rol=$($prompt -match '<role_instructions>'); contiene BRIEF=$($prompt -match 'BRIEF-'); contiene task=$($prompt -match '<task>'); contiene contrato=$($prompt -match '<structured_output_contract>|<compact_output_contract>'); schema=$(if ($schema) { Split-Path $schema -Leaf } else { 'ninguno' })")

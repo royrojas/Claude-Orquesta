@@ -8,6 +8,9 @@
 #>
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+# Misma política que OrquestaCommon.ps1: la suite compara strings con acentos y ✓/✗, así que la consola tiene que ser UTF-8
+# también del lado del harness (si no, corrida desde Git Bash da fallos falsos).
+try { $utf8 = [Text.UTF8Encoding]::new($false); [Console]::InputEncoding = $utf8; [Console]::OutputEncoding = $utf8; $OutputEncoding = $utf8 } catch { }
 
 $Root    = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $Scripts = Join-Path $Root 'scripts'
@@ -101,7 +104,10 @@ foreach ($s in Get-ChildItem (Join-Path $Root 'skills') -Directory) {
     $fm = Get-Frontmatter $skill
     Assert ($null -ne $fm -and $fm.ContainsKey('description')) "skills/$($s.Name): description en frontmatter"
     Assert ((Get-Content $skill).Count -lt 500) "skills/$($s.Name): menos de 500 líneas"
+    if ($null -ne $fm -and $fm.ContainsKey('allowed-tools')) { Assert ($fm['allowed-tools'] -notmatch '\)\s+[A-Za-z]') "skills/$($s.Name): allowed-tools separado por comas" }
 }
+$skArq = Get-Content (Join-Path $Root 'skills/arquitecto/SKILL.md') -Raw -Encoding UTF8
+Assert ($skArq -match '`inherit`' -and $skArq -match 'ID completo' -and $skArq -match '-Intento N\+1 -Hallazgos') "arquitecto: regla de model (inherit / ID completo) y reintento codex documentados"
 foreach ($t in @('PLAN.md', 'BRIEF.md', 'REPORTE.md', 'ADR.md', 'HANDOFF.md')) { Assert (Test-Path (Join-Path $Root "skills/arquitecto/plantillas/$t")) "plantilla $t existe" }
 foreach ($r in @('enrutamiento.md', 'brief-checklist.md', 'revision-checklist.md')) { Assert (Test-Path (Join-Path $Root "skills/arquitecto/referencias/$r")) "referencia $r existe" }
 
@@ -218,6 +224,7 @@ Remove-Item $planPath -ErrorAction SilentlyContinue
 & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Initialize-Orquesta.ps1') -Objetivo 'x' -Cwd $tmp -Force | Out-Null
 $r = Invoke-Hook 'Gate-Delegacion.ps1' (Spawn 'orquesta:implementador' 'sin brief')
 Assert ($r -notmatch '\\u00[0-1][0-9a-f]' -and $r -match "'estado: planificando'") "deny de delegación sin ESC ni escapes raros"
+Assert ($r -match "está en 'estado: planificando'") "la razón del deny llega con los acentos intactos (UTF-8 en stdout)"
 (Get-Content $planPath -Raw) -replace 'estado: planificando', 'estado: en-ejecucion' | Set-Content $planPath -Encoding UTF8
 $r = Invoke-Hook 'Gate-Edicion.ps1' (EditReq 'src/Servicio.cs')
 Assert ($r -notmatch '\\u00[0-1][0-9a-f]') "deny de edición sin caracteres de control"
@@ -231,6 +238,7 @@ Remove-Item $planPath -ErrorAction SilentlyContinue
 $estadoTxt = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Show-Estado.ps1') -Cwd $tmp | Out-String
 Assert ($estadoTxt -match 'orquesta:implementador \| codex \| gpt-fake-codex') "Show-Estado muestra motor codex y su modelo"
 Assert ($estadoTxt -match 'Motor codex: comando .* disponible') "Show-Estado detecta el comando codex"
+Assert ($estadoTxt -match 'redefine motores\.codex\.comando') "Show-Estado avisa que el comando de Codex viene del .claude/orquesta.json del proyecto"
 $r = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Invoke-Codex.ps1') -Rol implementador -Brief '.orquesta/briefs/BRIEF-07.md' -Cwd $tmp 2>&1 | Out-String
 Assert ($LASTEXITCODE -eq 2 -and $r -match 'no existe') "sin PLAN → Invoke-Codex se niega (misma compuerta)"
 & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Initialize-Orquesta.ps1') -Objetivo 'codex' -Cwd $tmp -Force | Out-Null
@@ -265,6 +273,18 @@ $r = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Invoke-Codex.
 Assert ($r -match 'intento=2 \(resume\)') "el reintento reanuda el hilo de Codex"
 $log = Get-Content (Join-Path $tmp '.orquesta/reportes/.codex-REPORTE-07.log') -Raw
 Assert ($log -match 'resume thr_nuevo_' -and $log -match 'REINTENTO-07-2') "resume <thread_id> con el prompt en archivo"
+Assert ($log -match 'resume thr_nuevo_\S+ --json -o ') "en resume, --json/-o van después del subcomando (exec resume no acepta --sandbox ni -C)"
+$rs = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Invoke-Codex.ps1') -Rol implementador-senior -Brief '.orquesta/briefs/BRIEF-07.md' -Intento 2 -Hallazgos 'x.md' -Cwd $tmp 2>&1 | Out-String
+Assert ($LASTEXITCODE -eq 0 -and $rs -match 'rol=implementador-senior' -and $rs -match 'intento=2' -and $rs -notmatch '\(resume\)') "escalar a senior con -Intento 2 arranca un hilo limpio (sin resume)"
+$st = Get-Content (Join-Path $tmp '.orquesta/reportes/.codex-REPORTE-07.json') -Raw | ConvertFrom-Json
+Assert ($st.rol -eq 'implementador-senior' -and $st.thread_id -like 'thr_nuevo_*') "el estado guarda el rol y el hilo del último intento"
+Set-Content (Join-Path $tmp '.orquesta/reportes/REPORTE-07-codex.md') 'VIEJO' -Encoding UTF8
+$env:FAKE_CODEX_SIN_O = '1'
+try { $r3 = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Invoke-Codex.ps1') -Rol implementador-senior -Brief '.orquesta/briefs/BRIEF-07.md' -Intento 3 -Hallazgos 'x.md' -Cwd $tmp 2>&1 | Out-String; $exit3 = $LASTEXITCODE }
+finally { Remove-Item Env:FAKE_CODEX_SIN_O -ErrorAction SilentlyContinue }
+Assert ($exit3 -eq 0 -and $r3 -match 'intento=3 \(resume\)' -and $r3 -match 'estado=COMPLETADO') "reintento del mismo rol reanuda el hilo"
+$rep = Get-Content (Join-Path $tmp '.orquesta/reportes/REPORTE-07-codex.md') -Raw
+Assert ($rep -notmatch 'VIEJO' -and $rep -match 'COMPLETADO') "si resume no reescribe -o, el REPORTE sale del JSONL y reemplaza al del intento anterior"
 $bit = Get-Content (Join-Path $tmp '.orquesta/bitacora.jsonl') | ForEach-Object { $_ | ConvertFrom-Json }
 Assert (@($bit | Where-Object { $_.PSObject.Properties['motor'] -and $_.motor -eq 'codex' -and $_.evento -eq 'stop' }).Count -ge 3) "bitácora registra los stops de codex con motor (implementador ×2 + revisor)"
 Assert (@($bit | Where-Object { $_.PSObject.Properties['tokens_in'] -and $_.tokens_in -eq 1234 }).Count -ge 1) "bitácora registra tokens de codex"
@@ -294,7 +314,17 @@ $doc = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Doctor-Orqu
 Assert ($LASTEXITCODE -eq 0 -and $doc -match 'Doctor orquesta') "doctor corre y devuelve Markdown"
 Assert ($doc -match '✓ scripts completos' -and $doc -match 'hooks.json válido \(5 compuertas\)') "doctor valida scripts y hooks"
 Assert ($doc -match 'motor codex' -and $doc -match 'Codex CLI') "doctor detecta que hay trabajadores en codex y lo verifica"
+Assert ($doc -match '✗ el \.claude/orquesta\.json del proyecto redefine motores\.codex\.comando') "doctor avisa que el comando de Codex viene del .claude/orquesta.json del proyecto"
 Assert ($doc -notmatch 'Exception') "doctor sin excepciones en la salida"
+
+Write-Host "`n== 17. Trabajador extra en la config del proyecto (StrictMode) ==" -ForegroundColor Cyan
+Set-Content (Join-Path $tmp '.claude/orquesta.json') '{ "trabajadores": { "qa": { "modelo": "haiku" } } }'
+$ex = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Show-Estado.ps1') -Cwd $tmp 2>&1 | Out-String
+Assert ($LASTEXITCODE -eq 0 -and $ex -match 'orquesta:qa \| claude \| haiku \|' -and $ex -notmatch 'cannot be found') "Show-Estado tolera un trabajador sin esfuerzo/rol"
+$ex = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Initialize-Orquesta.ps1') -Objetivo 'qa' -Cwd $tmp -Force 2>&1 | Out-String
+Assert ($LASTEXITCODE -eq 0 -and (Get-Content $planPath -Raw) -match 'orquesta:qa \| claude \| haiku \|') "Initialize-Orquesta incluye al trabajador extra en la tabla del PLAN"
+$ex = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Doctor-Orquesta.ps1') -Cwd $tmp 2>&1 | Out-String
+Assert ($LASTEXITCODE -eq 0 -and $ex -notmatch 'cannot be found' -and $ex -match 'todos en Claude') "Doctor tolera el trabajador extra"
 
 Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
 Write-Host "`n== Resultado: $ok ok, $fallos fallos ==" -ForegroundColor $(if ($fallos) { 'Red' } else { 'Green' })

@@ -5,6 +5,15 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# Claude Code manda y lee UTF-8; sin esto, en Windows la consola impone su code page y los acentos de los
+# JSON de entrada/salida se corrompen (también al correr la suite desde Git Bash). Falla en silencio si no hay consola.
+try {
+    $utf8 = [Text.UTF8Encoding]::new($false)
+    [Console]::InputEncoding = $utf8
+    [Console]::OutputEncoding = $utf8
+    $OutputEncoding = $utf8
+} catch { }
+
 function Get-OrquestaPluginRoot {
     # scripts/ está un nivel bajo la raíz del plugin.
     return (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
@@ -131,6 +140,39 @@ function Get-Prop {
         $cur = $prop.Value
     }
     return $cur
+}
+
+function Get-TrabajadorInfo {
+    <#
+      Motor y modelo efectivos de un trabajador según la config. Tolera entradas incompletas (un trabajador agregado
+      en .claude/orquesta.json sin esfuerzo/rol) y resuelve el modelo de codex: un alias de Claude o vacío cae a
+      motores.codex.modelo, y si ese también está vacío, 'codex-default'.
+    #>
+    param([Parameter(Mandatory)]$Config, [Parameter(Mandatory)][string]$Nombre)
+    $t = Get-Prop $Config "trabajadores.$Nombre"
+    $motor = "$(Get-Prop $t 'motor')"; if (-not $motor) { $motor = 'claude' }
+    $modelo = "$(Get-Prop $t 'modelo')"
+    if ($motor -eq 'codex' -and $modelo -in @('haiku', 'sonnet', 'opus', 'fable', 'inherit', '')) {
+        $modelo = "$(Get-Prop $Config 'motores.codex.modelo')"; if (-not $modelo) { $modelo = 'codex-default' }
+    }
+    return [pscustomobject]@{ Nombre = $Nombre; Motor = $motor; Modelo = $modelo; Esfuerzo = "$(Get-Prop $t 'esfuerzo')"; Rol = "$(Get-Prop $t 'rol')" }
+}
+
+function Get-OverridesRiesgosos {
+    <#
+      Claves de motores.codex que, definidas en el .claude/orquesta.json DEL PROYECTO (viaja con el repo), permiten que un
+      repo clonado decida qué ejecutable corre el arquitecto o lo saque del sandbox. Devuelve descripciones; vacío si no hay.
+    #>
+    param([string]$Cwd)
+    $r = @()
+    $proj = Read-OrquestaJsonFile -Path (Join-Path $Cwd '.claude/orquesta.json')
+    if ($null -eq $proj) { return $r }
+    foreach ($k in @('comando', 'args_extra')) {
+        $v = Get-Prop $proj "motores.codex.$k"
+        if ($null -ne $v -and "$(@($v) -join ' ')" -ne '') { $r += "motores.codex.$k = $(@($v) -join ' ')" }
+    }
+    if ("$(Get-Prop $proj 'motores.codex.sandbox')" -eq 'danger-full-access') { $r += 'motores.codex.sandbox = danger-full-access' }
+    return $r
 }
 
 function Get-PlanInfo {

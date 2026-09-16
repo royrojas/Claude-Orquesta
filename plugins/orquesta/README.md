@@ -83,7 +83,7 @@ La config se resuelve por merge profundo: `config/orquesta.defaults.json` (plugi
 }
 ```
 
-Valores: `haiku`, `sonnet`, `opus`, `fable`, `inherit` o un ID completo (`claude-sonnet-5`). El arquitecto pasa `model:` en **cada** llamada al subagente, así que tu config manda sobre el frontmatter de los agentes. Si en el chat decís "usá opus para todo", eso manda durante esa orquestación y queda anotado en `## Enrutamiento → Overrides` del PLAN.
+Valores: `haiku`, `sonnet`, `opus`, `fable` o `inherit` (el modelo de la sesión); los IDs completos (`claude-sonnet-5`) no los acepta el Agent tool, usá el alias. El arquitecto pasa `model:` en **cada** llamada al subagente, así que tu config manda sobre el frontmatter de los agentes. Si en el chat decís "usá opus para todo", eso manda durante esa orquestación y queda anotado en `## Enrutamiento → Overrides` del PLAN.
 
 El modelo del arquitecto es el de la sesión (`claude --model fable`); la config solo lo declara para avisarte si no coincide. Verificá con `/tasks` qué modelo corre cada subagente.
 
@@ -96,8 +96,8 @@ Los subagentes de Claude Code solo corren modelos Claude, pero un trabajador de 
 ```json
 {
   "trabajadores": {
-    "implementador":        { "motor": "codex", "modelo": "" },
-    "implementador-senior": { "motor": "codex", "modelo": "" },
+    "implementador":        { "motor": "codex" },
+    "implementador-senior": { "motor": "codex" },
     "revisor":              { "motor": "claude", "modelo": "opus" },
     "auditor-seguridad":    { "motor": "claude", "modelo": "opus" }
   },
@@ -105,9 +105,9 @@ Los subagentes de Claude Code solo corren modelos Claude, pero un trabajador de 
 }
 ```
 
-Con eso, Fable clarifica y escribe los BRIEFs, `scripts/Invoke-Codex.ps1` se los pasa a Codex con las **mismas instrucciones del rol** (`agents/implementador.md`), y Opus (o Fable, es una línea de config) revisa y audita en subagentes independientes con contexto limpio: revisión entre proveedores distintos. `modelo: ""` usa el default de tu `~/.codex/config.toml`. Requiere Codex CLI instalado y `codex login` hecho.
+Con eso, Fable clarifica y escribe los BRIEFs, `scripts/Invoke-Codex.ps1` se los pasa a Codex con las **mismas instrucciones del rol** (`agents/implementador.md`), y Opus (o Fable, es una línea de config) revisa y audita en subagentes independientes con contexto limpio: revisión entre proveedores distintos. Sin `modelo` se usa `motores.codex.modelo` y, si está vacío, el default de tu `~/.codex/config.toml`. Requiere Codex CLI instalado y `codex login` hecho.
 
-Qué hace el wrapper: aplica las mismas compuertas (sin PLAN `en-ejecucion`, sin BRIEF o con BRIEF mal formado no corre), arma el prompt en la forma que OpenAI recomienda para GPT-5.x (bloques `<role_instructions>`, `<task>`, `<default_follow_through_policy>`, `<action_safety>`, `<verification_loop>`, `<grounding_rules>` y un contrato de salida explícito), pide **salida estructurada** con `--output-schema` (`schemas/reporte.schema.json` para implementadores, `schemas/revision.schema.json` para revisor/auditor: dictamen, criterios ✓/✗ con evidencia, hallazgos con severidad, archivo:línea y confianza 0-1), guarda el JSON crudo y lo renderiza al mismo formato REPORTE/REVISIÓN que producen los trabajadores de Claude, registra tokens de Codex en la bitácora, y en los reintentos usa `codex exec resume <thread>` para que Codex conserve el contexto. También sirve para `-Rol revisor` (Codex revisando lo que implementó Claude) o `-Rol cartografo`. `"salida_estructurada": false` vuelve a texto libre.
+Qué hace el wrapper: aplica las mismas compuertas (sin PLAN `en-ejecucion`, sin BRIEF o con BRIEF mal formado no corre), arma el prompt en la forma que OpenAI recomienda para GPT-5.x (bloques `<role_instructions>`, `<task>`, `<default_follow_through_policy>`, `<action_safety>`, `<verification_loop>`, `<grounding_rules>` y un contrato de salida explícito), pide **salida estructurada** con `--output-schema` (`schemas/reporte.schema.json` para implementadores, `schemas/revision.schema.json` para revisor/auditor: dictamen, criterios ✓/✗ con evidencia, hallazgos con severidad, archivo:línea y confianza 0-1), guarda el JSON crudo y lo renderiza al mismo formato REPORTE/REVISIÓN que producen los trabajadores de Claude, registra tokens de Codex en la bitácora, y en los reintentos del mismo rol usa `codex exec resume <thread>` para que Codex conserve el contexto (al escalar de tier arranca limpio). También sirve para `-Rol revisor` (Codex revisando lo que implementó Claude) o `-Rol cartografo`. `"salida_estructurada": false` vuelve a texto libre.
 
 Sandbox: `workspace-write` bloquea red; si tu `dotnet restore` necesita bajar paquetes dentro de la corrida, restaurá antes o usá `"sandbox": "danger-full-access"` (solo en tu máquina). En Windows, Codex CLI se instala con `npm i -g @openai/codex`.
 
@@ -175,7 +175,7 @@ plugins/orquesta/
 pwsh -NoProfile -File plugins/orquesta/tests/Test-Orquesta.ps1
 ```
 
-166 aserciones sin dependencias: JSON de manifiestos y hooks, frontmatter de agentes y skills, sintaxis de todos los scripts, merge de config, y cada compuerta alimentada con el JSON que Claude Code manda por stdin (deny/allow/block/nudge, `agent_id`, `stop_hook_active`, `ORQUESTA_GATES`), más el motor Codex contra un `codex` falso (compuertas, flags, REPORTE, thread_id, resume, tokens), la validación de forma de BRIEFs, el aviso de sesión, la salida estructurada (JSON → REPORTE/REVISIÓN) y el doctor.
+181 aserciones sin dependencias: JSON de manifiestos y hooks, frontmatter de agentes y skills, sintaxis de todos los scripts, merge de config, y cada compuerta alimentada con el JSON que Claude Code manda por stdin (deny/allow/block/nudge, `agent_id`, `stop_hook_active`, `ORQUESTA_GATES`), más el motor Codex contra un `codex` falso (compuertas, flags, REPORTE, thread_id, resume, tokens), la validación de forma de BRIEFs, el aviso de sesión, la salida estructurada (JSON → REPORTE/REVISIÓN) y el doctor.
 
 El repo trae un workflow de GitHub Actions (`.github/workflows/tests.yml`) que corre la misma suite en **windows-latest y ubuntu-latest** en cada push. Es la prueba en Windows que no se puede hacer desde Linux: rutas con `\`, shims `.cmd`, finales de línea.
 
