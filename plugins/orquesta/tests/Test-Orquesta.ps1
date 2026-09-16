@@ -110,6 +110,11 @@ $skArq = Get-Content (Join-Path $Root 'skills/arquitecto/SKILL.md') -Raw -Encodi
 Assert ($skArq -match '`inherit`' -and $skArq -match 'ID completo' -and $skArq -match '-Intento N\+1 -Hallazgos') "arquitecto: regla de model (inherit / ID completo) y reintento codex documentados"
 Assert ($skArq -match 'preferencia permanente' -and $skArq -match 'AskUserQuestion' -and $skArq -match '\.claude/orquesta\.json' -and $skArq -match 'fusion') "arquitecto: pregunta antes de persistir un override permanente en orquesta.json"
 Assert ($skArq -match 'rutas resueltas y literales' -and $skArq -match 'nunca le digas solo') "arquitecto: le pasa al documentador las rutas de Obsidian resueltas, no en abstracto"
+Assert ($skArq -match 'Marcar-Tarea\.ps1' -and $skArq -match 'Economía de contexto' -and $skArq -match 'No invoqués otras skills' -and $skArq -match '/model') "arquitecto: economía de contexto (registro con Marcar-Tarea, sin skills ajenas, sin /model a mitad)"
+Assert ($skArq -match 'Show-Costos\.ps1' -and $skArq -match 'modo RETRO' -and $skArq -match 'segunda pasada dirigida') "arquitecto: cierra con costos medidos, delega la retro al documentador y pide contratos al cartógrafo en vez de recon propio"
+$agCarto = Get-Content (Join-Path $Root 'agents/cartografo.md') -Raw -Encoding UTF8
+Assert ((Get-Frontmatter (Join-Path $Root 'agents/cartografo.md'))['model'] -eq 'sonnet' -and $agCarto -match 'Contratos para un BRIEF' -and $agCarto -match '\[inferido\]') "cartógrafo: sonnet, modo 'contratos para un BRIEF' y marca [inferido]"
+Assert ((Get-Content (Join-Path $Root 'agents/documentador.md') -Raw -Encoding UTF8) -match '## RETRO') "documentador: sabe escribir la RETRO (no la escribe el arquitecto)"
 $skInit = Get-Content (Join-Path $Root 'skills/init/SKILL.md') -Raw -Encoding UTF8
 Assert ($skInit -match 'AskUserQuestion' -and $skInit -match 'implementador-senior' -and $skInit -match 'revisor' -and $skInit -match 'solo las claves que eligi' -and $skInit -match 'usar: false') "init: pregunta modelos y destino de las notas (repo / vault / ninguna) y escribe solo las claves elegidas"
 Assert ($skInit -match 'absoluta, tal cual' -and $skInit -match 'No la conviertas a una ruta relativa' -and $skInit -match 'Nunca crees ni edites `~/.claude/orquesta.json`') "init: la carpeta de Obsidian se escribe absoluta tal cual, y nunca toca el ~/.claude/orquesta.json global"
@@ -405,6 +410,80 @@ $r4 = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Initialize-O
 $gen3 = Get-Content $cfgPath -Raw -Encoding UTF8 | ConvertFrom-Json
 Assert ($LASTEXITCODE -eq 0 -and $null -eq $gen3.contexto.obsidian.PSObject.Properties['carpeta_decisiones'] -and $r4 -match 'docs/decisiones') "sin CLAUDE.md ni Obsidian ni graphify: init igual crea la config y deja las notas dentro del repo"
 Remove-Item $tmpInit -Recurse -Force -ErrorAction SilentlyContinue
+
+Write-Host "`n== 19. Marcar-Tarea.ps1 (registro en una llamada) ==" -ForegroundColor Cyan
+$tmpMt = Join-Path ([IO.Path]::GetTempPath()) ("orquesta-mt-" + [guid]::NewGuid().ToString('n').Substring(0, 8))
+New-Item -ItemType Directory -Path (Join-Path $tmpMt '.orquesta') -Force | Out-Null
+$planMt = @('---', 'objetivo: prueba', 'estado: en-ejecucion', '---', '# PLAN — prueba', '', '## Tareas',
+    '- [ ] 1. Exportar CSV — tier: implementador — brief: briefs/BRIEF-01.md — depende: —',
+    '- [ ] 2. Importar — tier: implementador — brief: briefs/BRIEF-02.md — depende: 1',
+    '- [ ] V. Verificación final (build + tests + criterios de todos los briefs) — revisor', '',
+    '## Bitácora de revisión', '| # | Trabajador (modelo) | Intento | Revisor | Resultado | Notas |', '|---|---|---|---|---|---|', '',
+    '## Diferido / fuera de alcance', '- …')
+Set-Content (Join-Path $tmpMt '.orquesta/PLAN.md') ($planMt -join "`n") -Encoding UTF8
+$mt = Join-Path $Scripts 'Marcar-Tarea.ps1'
+$r1 = & $pwsh -NoProfile -NonInteractive -File $mt -Cwd $tmpMt -Tarea 1 -Resultado APROBADO -Trabajador 'implementador (sonnet)' -Intento 2 -Revisor 'revisor (opus)' -Notas 'ok | ratificado' 2>&1 | Out-String
+$planTxt = Get-Content (Join-Path $tmpMt '.orquesta/PLAN.md') -Raw -Encoding UTF8
+Assert ($LASTEXITCODE -eq 0 -and $r1 -match 'tarea 1 APROBADO' -and $planTxt -match '(?m)^- \[x\] 1\. Exportar CSV') "APROBADO marca [x] en la tarea"
+Assert ($planTxt -match '(?m)^\| 1 \| implementador \(sonnet\) \| 2 \| revisor \(opus\) \| APROBADO \| ok / ratificado \|\r?$') "agrega la fila a la bitácora de revisión (y limpia el pipe de las notas)"
+Assert ($planTxt -match '\|---\|---\|---\|---\|---\|---\|\r?\n\| 1 \|' -and $planTxt -match '\| 1 \|[^\n]*\r?\n\r?\n## Diferido') "la fila queda dentro de la tabla, antes de la línea vacía que la cierra"
+& $pwsh -NoProfile -NonInteractive -File $mt -Cwd $tmpMt -Tarea 2 -Resultado RECHAZADO -Trabajador 'implementador (sonnet)' -Intento 1 -Revisor 'auditor (opus)' -Notas '[Debe] XSS' | Out-Null
+$planTxt = Get-Content (Join-Path $tmpMt '.orquesta/PLAN.md') -Raw -Encoding UTF8
+Assert ($planTxt -match '(?m)^- \[ \] 2\. Importar' -and $planTxt -match '\| 2 \|[^\n]*\| RECHAZADO \| \[Debe\] XSS \|') "RECHAZADO registra la fila sin cambiar la marca"
+& $pwsh -NoProfile -NonInteractive -File $mt -Cwd $tmpMt -Tarea 2 -Resultado DIFERIDO -Notas 'con aprobación del usuario' | Out-Null
+& $pwsh -NoProfile -NonInteractive -File $mt -Cwd $tmpMt -Tarea 'V.' -Resultado APROBADO -Revisor 'revisor (opus)' | Out-Null
+$planTxt = Get-Content (Join-Path $tmpMt '.orquesta/PLAN.md') -Raw -Encoding UTF8
+Assert ($planTxt -match '(?m)^- \[~\] 2\. Importar' -and $planTxt -match '(?m)^- \[x\] V\. Verificaci') "DIFERIDO marca [~] y V. APROBADO cierra la verificación final"
+$infoMt = & $pwsh -NoProfile -NonInteractive -Command ". '$Scripts/OrquestaCommon.ps1'; (Get-PlanInfo -Cwd '$tmpMt') | ConvertTo-Json -Compress" | ConvertFrom-Json
+Assert ($infoMt.Abiertos -eq 0 -and $infoMt.Cerrados -eq 2 -and $infoMt.Diferidos -eq 1 -and $infoMt.VerificacionCerrada -eq $true) "Get-PlanInfo lee el PLAN resultante: 0 abiertas, 2 cerradas, 1 diferida, V. cerrada"
+$bitMt = Get-Content (Join-Path $tmpMt '.orquesta/bitacora.jsonl') -Encoding UTF8 | ForEach-Object { $_ | ConvertFrom-Json }
+Assert (@($bitMt | Where-Object { $_.evento -eq 'tarea' }).Count -eq 4 -and @($bitMt | Where-Object { $_.evento -eq 'tarea' -and $_.resultado -eq 'DIFERIDO' }).Count -eq 1) "cada llamada deja un evento 'tarea' en bitacora.jsonl"
+$r9 = & $pwsh -NoProfile -NonInteractive -File $mt -Cwd $tmpMt -Tarea 9 -Resultado APROBADO 2>&1 | Out-String
+Assert ($LASTEXITCODE -eq 1 -and $r9 -match 'no encontr') "tarea inexistente → exit 1 con mensaje"
+Remove-Item $tmpMt -Recurse -Force -ErrorAction SilentlyContinue
+
+Write-Host "`n== 20. Show-Costos.ps1 (usage real de los transcripts) ==" -ForegroundColor Cyan
+$tmpCo = Join-Path ([IO.Path]::GetTempPath()) ("orquesta-co-" + [guid]::NewGuid().ToString('n').Substring(0, 8))
+$slugTest = & $pwsh -NoProfile -NonInteractive -Command ". '$Scripts/OrquestaCommon.ps1'; ConvertTo-ClaudeProjectSlug -Path 'C:\Cafe Britt\_Programas\AI.Monitor.v2\AI.Monitor'"
+Assert ($slugTest -eq 'C--Cafe-Britt--Programas-AI-Monitor-v2-AI-Monitor') "el slug de la carpeta de proyecto se calcula como lo hace Claude Code (todo lo no alfanumérico → '-')"
+$claudeDir = Join-Path $tmpCo 'claude'
+$slugCo = & $pwsh -NoProfile -NonInteractive -Command ". '$Scripts/OrquestaCommon.ps1'; ConvertTo-ClaudeProjectSlug -Path '$tmpCo'"
+$projCo = Join-Path (Join-Path $claudeDir 'projects') $slugCo
+New-Item -ItemType Directory -Path (Join-Path $projCo 'ses-1/subagents') -Force | Out-Null
+New-Item -ItemType Directory -Path (Join-Path $tmpCo '.orquesta') -Force | Out-Null
+function Linea([string]$id, [string]$model, [int]$in, [int]$cc, [int]$cr, [int]$out) {
+    return (@{ type = 'assistant'; timestamp = '2026-09-16T06:00:00.000Z'; message = @{ id = $id; model = $model; usage = @{ input_tokens = $in; cache_creation_input_tokens = $cc; cache_read_input_tokens = $cr; output_tokens = $out } } } | ConvertTo-Json -Compress -Depth 5)
+}
+# m1: tres líneas del mismo request (bloques de contenido) · m2: arranque en frío · m3: otro modelo
+@(
+    (Linea 'm1' 'claude-fable-5-1' 0 20000 120000 500), (Linea 'm1' 'claude-fable-5-1' 0 20000 120000 1500), (Linea 'm1' 'claude-fable-5-1' 0 20000 120000 2000),
+    (Linea 'm2' 'claude-fable-5-1' 0 400000 0 1000),
+    (Linea 'm3' 'claude-sonnet-5' 100 0 300000 200),
+    (@{ type = 'user'; message = @{ role = 'user'; content = 'hola' } } | ConvertTo-Json -Compress)
+) | Set-Content (Join-Path $projCo 'ses-1.jsonl') -Encoding UTF8
+@((Linea 's1' 'claude-opus-5' 0 50000 1000000 10000)) | Set-Content (Join-Path $projCo 'ses-1/subagents/agent-abc123.jsonl') -Encoding UTF8
+@(
+    (@{ evento = 'spawn'; sesion = 'ses-1'; agente = 'revisor'; modelo = 'opus' } | ConvertTo-Json -Compress),
+    (@{ evento = 'stop'; sesion = 'ses-1'; agente = 'revisor'; agent_id = 'abc123'; estado = 'APROBADO' } | ConvertTo-Json -Compress),
+    (@{ evento = 'spawn'; sesion = 'codex'; agente = 'implementador'; motor = 'codex'; modelo = 'gpt-5.6-sol' } | ConvertTo-Json -Compress),
+    (@{ evento = 'stop'; sesion = 'codex'; agente = 'implementador'; motor = 'codex'; agent_id = 'thr-1'; tokens_in = 2000000; tokens_out = 10000 } | ConvertTo-Json -Compress)
+) | Set-Content (Join-Path $tmpCo '.orquesta/bitacora.jsonl') -Encoding UTF8
+$co = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Show-Costos.ps1') -Cwd $tmpCo -ClaudeDir $claudeDir 2>&1 | Out-String
+Assert ($co -match 'Costos de la orquestaci' -and $co -match 'Sesión\(es\) \(bitácora\): `ses-1`') "toma la sesión de la bitácora e imprime la tabla"
+Assert ($co -match '\| arquitecto \(sesión\) \| claude-fable-5-1 \| 2 \|') "deduplica las líneas de un mismo request (3 líneas = 1 request): 2 requests de fable, no 4"
+# fable: caché escrita (20k+400k)·12,5 + caché leída 120k·0,25 + salida (2000+1000)·50 = 5,25 + 0,03 + 0,15 = 5,43 USD
+Assert ($co -match '\| arquitecto \(sesión\) \| claude-fable-5-1 \| 2 \| 400k \| 0 \| 420k \| 120k \| 3k \| 5\.43 \|') "valora a costos.tarifas, con el máximo de salida por request y el contexto máximo"
+Assert ($co -match '\| revisor x1 \| claude-opus-5 \| 1 \|') "el subagente se nombra por el rol que la bitácora asoció a su agent_id"
+Assert ($co -match '\| implementador x1 \(codex\) \| gpt-5\.6-sol \| 1 \| — \| 2\.0M \|') "las corridas de Codex salen de la bitácora con su modelo (formato invariante: 2.0M, no 2,0M)"
+Assert ($co -match 'Arranques en frío:\*\* 1 request') "detecta el request que re-escribió ≥ 100k de caché (arranque en frío)"
+Assert ($co -match '\*\*Total\*\* \|[^\n]*\|\s*\r?\n\s*\r?\nArquitecto:') "hay una línea vacía tras la tabla"
+$coJson = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Show-Costos.ps1') -Cwd $tmpCo -ClaudeDir $claudeDir -Json | ConvertFrom-Json
+Assert ($coJson.senales.requests_arquitecto -eq 3 -and $coJson.senales.arranques_en_frio -eq 1 -and $coJson.total_usd -gt 5) "-Json devuelve filas y señales parseables"
+$coVacio = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Show-Costos.ps1') -Cwd (Join-Path $tmpCo 'nada') -ClaudeDir $claudeDir 2>&1 | Out-String
+Assert ($LASTEXITCODE -eq 0 -and $coVacio -match 'No encontré sesiones') "sin bitácora ni transcripts: mensaje claro, sin error"
+$defs = Get-Content (Join-Path $Root 'config/orquesta.defaults.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+Assert ($defs.trabajadores.cartografo.modelo -eq 'sonnet' -and $defs.costos.tarifas.fable.cache_lectura -eq 0.25) "defaults: cartógrafo en sonnet y tarifas de costos presentes"
+Remove-Item $tmpCo -Recurse -Force -ErrorAction SilentlyContinue
 
 Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
 Write-Host "`n== Resultado: $ok ok, $fallos fallos ==" -ForegroundColor $(if ($fallos) { 'Red' } else { 'Green' })

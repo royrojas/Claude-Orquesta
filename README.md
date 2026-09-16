@@ -106,7 +106,7 @@ Todo corre **desde la terminal de Claude Code**. Codex, si lo usás, corre como 
 ```
  vos ──► /orquesta:arquitecto "objetivo"
               │
-              ├─ 1. cartógrafo (haiku)   lee graphify + Obsidian + repo → mapa
+              ├─ 1. cartógrafo (sonnet)  lee graphify + Obsidian + repo → mapa
               ├─ 2. clarificar           una sola ronda de preguntas, todas juntas
               ├─ 3. PLAN.md              decisiones + tareas con tier → vos aprobás
               ├─ 4. BRIEF-NN.md ──► implementador (sonnet) / senior (opus) / codex
@@ -189,7 +189,7 @@ claude --model fable
 
 Lo primero que ves es el **estado del proyecto** (inyectado por el plugin): tabla de enrutamiento efectiva, si hay PLAN, si hay grafo de graphify, rama de git.
 
-### Paso 2 — El cartógrafo mapea (Haiku, solo lectura)
+### Paso 2 — El cartógrafo mapea (Sonnet, solo lectura)
 
 El arquitecto delega a `orquesta:cartografo`, que lee `graphify-out/GRAPH_REPORT.md` si existe, busca decisiones previas en `docs/decisiones`, y localiza archivos, contratos, convenciones y cómo se corren los tests. Devuelve un mapa de ≤ 60 líneas. El arquitecto **no lee el repo** por su cuenta: lee el mapa.
 
@@ -230,7 +230,7 @@ Cada REPORTE va a `orquesta:revisor` (Opus, contexto limpio): lee el BRIEF, mira
 
 ### Paso 7 — Cierre
 
-Con todas las tareas `[x]` (o `[~]` diferidas con tu aprobación explícita), el revisor hace la **verificación final** (`V.`: build + tests completos + criterios de todos los briefs). Luego `orquesta:documentador` escribe `docs/decisiones/ADR-20260908-export-csv-cierres.md` y `docs/handoffs/HANDOFF-20260908-export-csv-cierres.md`, y corre `graphify update .`. El PLAN pasa a `estado: cerrado` y recibís un resumen: qué se entregó, decisiones, diferidos, cómo se verificó y cuántas delegaciones fueron a cada modelo.
+Con todas las tareas `[x]` (o `[~]` diferidas con tu aprobación explícita), el revisor hace la **verificación final** (`V.`: build + tests completos + criterios de todos los briefs). Luego `orquesta:documentador` escribe `docs/decisiones/ADR-20260908-export-csv-cierres.md` y `docs/handoffs/HANDOFF-20260908-export-csv-cierres.md`, y corre `graphify update .`. El PLAN pasa a `estado: cerrado` y recibís un resumen: qué se entregó, decisiones, diferidos, cómo se verificó y el costo medido por actor y modelo (la tabla de `/orquesta:costos`). Si querés una retrospectiva, la escribe el documentador, no el arquitecto.
 
 El commit lo hacés vos (o tu skill de commit). El plugin nunca hace `git commit` ni `git push`.
 
@@ -267,6 +267,17 @@ Revisión con ojos frescos bajo demanda. Corre en un subagente revisor (solo lec
 
 Enrutamiento efectivo (trabajador → motor → modelo y de qué archivo sale), estado del PLAN y tareas abiertas, disponibilidad de graphify/Obsidian/Codex, rama de git y delegaciones por modelo acumuladas.
 
+### `/orquesta:costos`
+
+Cuánto costó la orquestación, **medido**: lee el `usage` real de cada request en los transcripts de Claude Code (`~/.claude/projects/<proyecto>/<sesión>.jsonl` para el arquitecto y `<sesión>/subagents/*.jsonl` para cada subagente), asocia cada subagente a su rol vía la bitácora, suma los tokens de Codex y valora todo con `costos.tarifas` (defaults del plugin, editables por proyecto). Una fila por actor y modelo: requests, contexto máximo, entrada, caché escrita, caché leída, salida (thinking incluido) y USD nominal. Debajo, las señales que importan: requests y contexto del arquitecto, costo por request y **arranques en frío** (requests que re-escribieron ≥ 100k de caché, típicamente por reanudar una sesión larga tras más de una hora o por cambiar de modelo con `/model`).
+
+```
+/orquesta:costos                              ← las sesiones que aparecen en .orquesta/bitacora.jsonl
+/orquesta:costos -Sesion 2c954fcd-…           ← una sesión concreta (el id es el nombre del transcript)
+```
+
+Con suscripción los dólares son referencia, pero los tokens cuentan contra la cuota igual. Ver [§14](#14-bitácora-y-métricas) para lo que enseñó la primera medición.
+
 ### `/orquesta:doctor`
 
 Diagnóstico del entorno: versión de PowerShell y `pwsh` en PATH, hooks y scripts del plugin, config válida y motores de los trabajadores, Codex CLI (versión y login) si algún trabajador lo usa, plugin oficial de OpenAI, graphify, carpeta de Obsidian, git, PLAN. Con "Siguientes pasos" cuando algo falta. Si el proyecto no tiene `.claude/orquesta.json`, te sugiere `/orquesta:init` (no lo crea él: doctor es solo lectura). Si el `CLAUDE.md` del proyecto declara una carpeta de Obsidian absoluta distinta de la que resuelve la config, lo marca con ✗ y te manda a `/orquesta:init` — solo lo lee para diagnosticar, la config sigue mandando.
@@ -292,6 +303,9 @@ pwsh -NoProfile -File Initialize-Orquesta.ps1 -Objetivo "..."               # cr
 pwsh -NoProfile -File Initialize-OrquestaConfig.ps1                         # lo mismo que /orquesta:init (config del proyecto)
 pwsh -NoProfile -File Test-Brief.ps1 -Brief .orquesta/briefs/BRIEF-01.md    # valida la forma de un BRIEF
 pwsh -NoProfile -File Show-Estado.ps1                                       # lo mismo que /orquesta:estado
+pwsh -NoProfile -File Show-Costos.ps1 [-Sesion <id>] [-Json]                # lo mismo que /orquesta:costos (-Json para tu dashboard)
+pwsh -NoProfile -File Marcar-Tarea.ps1 -Tarea 3 -Resultado APROBADO -Trabajador "implementador (sonnet)" -Intento 1 -Revisor "revisor (opus)" -Notas "..."
+                                                                            # marca [x]/[~], fila en ## Bitácora de revisión y evento en bitacora.jsonl, en una llamada
 pwsh -NoProfile -File Doctor-Orquesta.ps1                                   # lo mismo que /orquesta:doctor
 pwsh -NoProfile -File Resolve-OrquestaConfig.ps1 -Pretty                    # la config efectiva ya mezclada
 pwsh -NoProfile -File Invoke-Codex.ps1 -Rol implementador -Brief .orquesta/briefs/BRIEF-01.md -Intento 1
@@ -353,7 +367,7 @@ claude --model fable
 /orquesta:arquitecto <objetivo>
 ```
 
-Para la mayoría de los proyectos. El cartógrafo va en Haiku, el implementador en Sonnet, senior/revisor/auditor en Opus, documentador en Sonnet.
+Para la mayoría de los proyectos. El cartógrafo y el implementador van en Sonnet, senior/revisor/auditor en Opus, documentador en Sonnet.
 
 **B) Fable orquesta · Codex implementa · Claude Opus revisa y audita** — revisión entre proveedores distintos: la combinación más valiosa, y la que más cuota de Claude ahorra sin perder rigor en la revisión.
 
@@ -390,13 +404,13 @@ Requiere `npm i -g @openai/codex` y `codex login`. El modelo de Codex es el de t
 { "trabajadores": { "revisor": { "motor": "codex" } } }
 ```
 
-**E) Opus como sesión (sin Fable) · Sonnet implementa · Haiku mapea** — cuando no tenés Fable o no querés gastarlo en planear. Declaralo para que el aviso de "modelo distinto al esperado" no aparezca:
+**E) Opus como sesión (sin Fable) · Sonnet implementa y mapea** — cuando no tenés Fable o no querés gastarlo en planear. Declaralo para que el aviso de "modelo distinto al esperado" no aparezca:
 
 ```json
 { "orquestador": { "modelo": "opus" } }
 ```
 
-Arrancá con `claude --model opus`. `implementador: sonnet` y `cartografo: haiku` ya son default. Si además querés que el revisor no sea el mismo modelo que la sesión, `"revisor": { "modelo": "sonnet" }` o pasalo a Codex (D).
+Arrancá con `claude --model opus`. `implementador: sonnet` y `cartografo: sonnet` ya son default. Si además querés que el revisor no sea el mismo modelo que la sesión, `"revisor": { "modelo": "sonnet" }` o pasalo a Codex (D).
 
 **F) Todo barato, para tareas triviales** — Sonnet como sesión, Haiku implementa, Sonnet revisa. Sirve para renombres, docs, tests mecánicos. Perdés juicio en el PLAN y rigor en la revisión: no lo uses para migraciones ni SQL.
 
@@ -439,7 +453,7 @@ Verificá siempre con `/orquesta:estado` (muestra de qué archivo sale cada valo
 
 | Trabajador | Modelo | Herramientas | Qué recibe | Qué devuelve |
 |---|---|---|---|---|
-| `orquesta:cartografo` | haiku | solo lectura | el objetivo | Mapa ≤ 60 líneas: archivos clave, contratos, convenciones, decisiones previas (Obsidian), pruebas, riesgos, preguntas que el repo no responde. |
+| `orquesta:cartografo` | sonnet | solo lectura | el objetivo, o una tarea y sus archivos | Mapa ≤ 60 líneas: archivos clave, contratos copiados textuales con `archivo:línea`, convenciones, decisiones previas (Obsidian), pruebas, riesgos, preguntas que el repo no responde; marca `[inferido]` lo que no leyó. Segundo modo, "contratos para un BRIEF" (≤ 40 líneas): los fragmentos exactos que una tarea necesita, para que el arquitecto no abra el repo. |
 | `orquesta:implementador` | sonnet | lee, edita, ejecuta | ruta del BRIEF, PLAN, intento | REPORTE ≤ 40 líneas. Alcance = BRIEF; `BLOQUEADO` antes que adivinar; nunca hace commit. |
 | `orquesta:implementador-senior` | opus | lee, edita, ejecuta | igual + hallazgos del intento anterior | REPORTE. Especializado en dual-engine SQL Server/Oracle, migraciones con rollback, SPs, concurrencia, Azure Functions, Key Vault. |
 | `orquesta:revisor` | opus | solo lectura + build/tests | BRIEF, REPORTE, intento | REVISIÓN: `APROBADO`/`RECHAZADO`, criterios con evidencia, hallazgos por severidad, decisiones del trabajador a ratificar. Único que cierra `[x]` y `V.`. |
@@ -810,7 +824,27 @@ Un ADR por decisión que cambie contratos, datos, infraestructura o convenciones
 {"evento":"stop","agente":"implementador-senior","motor":"codex","estado":"COMPLETADO","tokens_in":48213,"tokens_out":3120,"segundos":212,"estructurado":true,"ts":"…"}
 ```
 
-`/orquesta:estado` la resume como "implementador [sonnet]: 6 · revisor [opus]: 6 · implementador-senior [codex]: 2". Con eso calibrás el enrutamiento: si la mitad de las tareas de SQL en Sonnet vuelven rechazadas, agregá `sql` a `senior_si`. Los tokens de los subagentes de Claude no vienen en la bitácora (Claude Code no los expone al hook); los de Codex sí.
+`/orquesta:estado` la resume como "implementador [sonnet]: 6 · revisor [opus]: 6 · implementador-senior [codex]: 2". Con eso calibrás el enrutamiento: si la mitad de las tareas de SQL en Sonnet vuelven rechazadas, agregá `sql` a `senior_si`. Los tokens de los subagentes de Claude no vienen en la bitácora (Claude Code no los expone al hook); los de Codex sí. Desde 1.4.0 hay un tercer evento, `tarea` (lo escribe `Marcar-Tarea.ps1` por cada dictamen: tarea, resultado, trabajador, intento, revisor, notas), y el campo `sesion` de los eventos de hooks es lo que `/orquesta:costos` usa para encontrar los transcripts.
+
+### Costos medidos, no estimados
+
+Los tokens reales están en los transcripts de Claude Code: `~/.claude/projects/<proyecto>/<sesión>.jsonl` (la sesión del arquitecto) y `<sesión>/subagents/agent-<id>.jsonl` (uno por subagente). Cada respuesta del modelo trae `usage` con `input_tokens`, `cache_creation_input_tokens`, `cache_read_input_tokens` y `output_tokens`. `/orquesta:costos` (`Show-Costos.ps1`) los agrega por actor y modelo y los valora con `costos.tarifas`.
+
+Lo que enseñó la primera orquestación real medida (5 tareas, arquitecto Fable, 24 delegaciones):
+
+| | Estimado a ojo | Medido |
+|---|---|---|
+| Requests del arquitecto | ~70 | 118 |
+| Contexto del arquitecto | 200–250k | creció a 453k, sin compactar |
+| Salida del arquitecto | 50k | 171k (el thinking se factura como salida) |
+| Costo del arquitecto | $8–10 | $22–25 |
+| Subagentes de Claude | $6 | $17,8 |
+
+- **El costo del arquitecto es requests × contexto + salida.** Cada tool call es un request que relee todo el contexto desde caché; 58 Edits de registro y 9 "¿cómo vamos?" con Bash costaron ~$8–10 solos. De ahí `Marcar-Tarea.ps1` (una llamada por dictamen) y las reglas de "Economía de contexto" del skill.
+- **Cambiar de modelo no ahorra**: con Opus la misma sesión habría costado casi lo mismo, porque su lectura de caché cuesta el doble que la de Fable. Bajar requests y contexto sí ahorra.
+- **Reanudar una sesión larga para una tarea lateral es carísimo**: escribir la retro al día siguiente costó $10–14 (un request frío re-escribió 419k de caché, y un `/model` posterior lo repitió). Por eso retro, memoria y cierre van al documentador o a una sesión nueva.
+- **El recon propio fue el 38 % del costo** porque el mapa de Haiku no traía contratos. Por eso el cartógrafo pasó a Sonnet con un modo "contratos para un BRIEF".
+- **Una skill ajena que se disparó sola** metió 30k tokens al contexto del arquitecto y se releyó ~80 veces. Por eso el arquitecto no invoca otras skills durante la orquestación.
 
 ## 15. Recetas para situaciones comunes
 
@@ -859,7 +893,7 @@ Dejalo en `en-ejecucion` con las tareas `[x]`; mañana `/orquesta:revisar final`
 | Codex en Windows reporta `BLOQUEADO` con `CreateProcessWithLogonW failed` en el log | El sandbox `workspace-write` de Codex no puede anidarse dentro del propio sandbox de Claude Code en Windows | Probá `"sandbox": "danger-full-access"` en tu máquina (nunca en CI). Confirmado: con eso el mismo BRIEF corrió bien. |
 | Codex: "not inside a trusted directory / git repo" | El proyecto no es un repo git | El wrapper agrega `--skip-git-repo-check`; mejor `git init`. |
 | El aviso de sesión no aparece | El PLAN está `cerrado` o no existe | Es el comportamiento esperado. |
-| Claude Code pregunta "Command spawns a nested PowerShell process which cannot be validated" cuando el arquitecto corre un script del plugin | Regla de seguridad de Claude Code: la herramienta PowerShell lanzando `pwsh` es un shell anidado que no puede validar contra las reglas de permiso, aunque el skill lo tenga permitido | Es normal. Elegí "Yes, and don't ask again" una vez por script. Los comandos `/orquesta:*` que solo muestran algo (doctor, estado) no preguntan: corren vía el `!` del skill. |
+| Claude Code pregunta "Command spawns a nested PowerShell process which cannot be validated" cuando el arquitecto corre un script del plugin | Regla de seguridad de Claude Code: la herramienta PowerShell lanzando `pwsh` es un shell anidado que no puede validar contra las reglas de permiso, aunque el skill lo tenga permitido | Es normal. Elegí "Yes, and don't ask again" una vez por script. Los comandos `/orquesta:*` que solo muestran algo (doctor, estado) no preguntan: corren vía el `!` del skill. Con `Marcar-Tarea.ps1` los argumentos cambian en cada llamada: aceptá con "always allow" la primera vez y las siguientes pasan por prefijo. |
 | El prompt de permiso muestra una ruta de `claude-orquesta` (el repo del plugin), no de mi proyecto | El marketplace es local (`source: directory`): Claude Code sirve el plugin desde su carpeta fuente, y `${CLAUDE_PLUGIN_ROOT}` apunta ahí | Es normal; no está tocando tu proyecto, es el plugin ejecutando su propio script. Con un marketplace de GitHub la ruta sería la caché de `~/.claude/plugins/`. |
 | `/orquesta:estado` o `/orquesta:doctor` dicen "(no existe aún)" de una carpeta de Obsidian que sí existe en tu vault | No configuraste `contexto.obsidian.vault_root`, así que `carpeta_decisiones`/`carpeta_handoffs` se resuelven contra el repo (el default), no contra tu vault | Poné `vault_root` en tu `~/.claude/orquesta.json` **personal** (nunca en el del proyecto) — ver [§13](#13-graphify-obsidian-y-la-documentación-que-deja). |
 | La delegación falla con un error de validación del parámetro `model` | Configuraste un ID completo (`claude-sonnet-5`) y el arquitecto lo pasó tal cual (plugin anterior a 1.3.1) | El Agent tool solo acepta `haiku`/`sonnet`/`opus`/`fable`. Desde 1.3.1 el arquitecto lo reduce al alias y omite `model:` con `inherit`; actualizá el plugin y, mejor, usá alias en la config. |
@@ -883,14 +917,15 @@ Claude-Orquesta/
     │   ├── arquitecto/    SKILL.md (protocolo) · referencias/ (enrutamiento, brief-checklist, revision-checklist) · plantillas/ (PLAN, BRIEF, REPORTE, ADR, HANDOFF)
     │   ├── revisar/       SKILL.md (context: fork → orquesta:revisor)
     │   ├── estado/        SKILL.md
+    │   ├── costos/        SKILL.md (Show-Costos: costo medido por actor y modelo)
     │   └── doctor/        SKILL.md
     ├── agents/            cartografo · implementador · implementador-senior · revisor · auditor-seguridad · documentador
     ├── hooks/hooks.json   las 5 compuertas → scripts/*.ps1
-    ├── scripts/           OrquestaCommon.ps1 · Gate-Delegacion · Gate-Edicion · Gate-Cierre · Log-Delegacion · Aviso-Sesion · Show-Estado · Doctor-Orquesta · Resolve-OrquestaConfig · Initialize-Orquesta · Test-Brief · Invoke-Codex
+    ├── scripts/           OrquestaCommon.ps1 · Gate-Delegacion · Gate-Edicion · Gate-Cierre · Log-Delegacion · Aviso-Sesion · Show-Estado · Doctor-Orquesta · Resolve-OrquestaConfig · Initialize-Orquesta · Test-Brief · Invoke-Codex · Marcar-Tarea · Show-Costos
     ├── schemas/           reporte.schema.json · revision.schema.json
     ├── config/orquesta.defaults.json
     ├── ejemplos/          orquesta.json · orquesta-codex.json
-    ├── tests/             Test-Orquesta.ps1 (216 aserciones) · fake-codex.ps1
+    ├── tests/             Test-Orquesta.ps1 (245 aserciones) · fake-codex.ps1
     ├── README.md          ficha técnica del plugin
     └── CHANGELOG.md
 ```
@@ -909,6 +944,16 @@ Sin dependencias (ni Pester). Valida JSON de manifiestos y hooks, frontmatter de
 - Nuevo motor: `Invoke-Codex.ps1` es el modelo a seguir; la config vive en `motores.<nombre>`.
 - Cambios en compuertas: agregá el caso al `Test-Orquesta.ps1` con el JSON de entrada que Claude Code mandaría.
 - Todo en español, con `vos`; scripts PowerShell 7 sin dependencias; sin backticks Markdown dentro de strings con comillas dobles de PowerShell (es carácter de escape).
+
+## Changelog
+
+El detalle por versión vive en [`plugins/orquesta/CHANGELOG.md`](plugins/orquesta/CHANGELOG.md).
+
+### 2026-09-16 — 1.4.0: costos medidos, registro en una llamada y economía de contexto
+- Nuevo `/orquesta:costos` (`Show-Costos.ps1`): cuánto costó la orquestación leyendo el `usage` real de los transcripts de Claude Code y los tokens de Codex, por actor y modelo, con tarifas editables en `costos.tarifas`.
+- Nuevo `Marcar-Tarea.ps1`: el arquitecto registra cada dictamen con una sola llamada en vez de editar el PLAN a mano varias veces.
+- El skill arquitecto incorpora las reglas de "Economía de contexto" que salieron de medir una orquestación real: el arquitecto gastó más que todos sus subagentes juntos por cantidad de requests y tamaño de contexto, no por el modelo.
+- El cartógrafo pasa a Sonnet y devuelve contratos textuales; el documentador puede escribir la retrospectiva para que no la haga el arquitecto al final de una sesión larga.
 
 ### Licencia
 

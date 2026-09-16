@@ -56,6 +56,25 @@ function Read-OrquestaJsonFile {
     }
 }
 
+function Get-OrquestaHome {
+    if ($env:HOME) { return $env:HOME }
+    if ($env:USERPROFILE) { return $env:USERPROFILE }
+    return [Environment]::GetFolderPath('UserProfile')
+}
+
+function Get-ClaudeConfigDir {
+    # Carpeta de datos de Claude Code (~/.claude, o CLAUDE_CONFIG_DIR si está definida). Ahí viven projects/<slug>/<sesión>.jsonl.
+    if ($env:CLAUDE_CONFIG_DIR) { return $env:CLAUDE_CONFIG_DIR }
+    return (Join-Path (Get-OrquestaHome) '.claude')
+}
+
+function ConvertTo-ClaudeProjectSlug {
+    # Claude Code nombra la carpeta del proyecto reemplazando todo carácter no alfanumérico del cwd por '-':
+    # C:\Cafe Britt\_Programas\AI.Monitor → C--Cafe-Britt--Programas-AI-Monitor
+    param([Parameter(Mandatory)][string]$Path)
+    return ($Path -replace '[^A-Za-z0-9]', '-')
+}
+
 function Get-OrquestaConfig {
     <#
       Config efectiva = defaults del plugin <- ~/.claude/orquesta.json <- <cwd>/.claude/orquesta.json
@@ -70,8 +89,7 @@ function Get-OrquestaConfig {
 
     $fuentes = @($defaultsPath)
 
-    $home_ = if ($env:HOME) { $env:HOME } elseif ($env:USERPROFILE) { $env:USERPROFILE } else { [Environment]::GetFolderPath('UserProfile') }
-    $userPath = Join-Path $home_ '.claude/orquesta.json'
+    $userPath = Join-Path (Get-OrquestaHome) '.claude/orquesta.json'
     $userCfg = Read-OrquestaJsonFile -Path $userPath
     if ($null -ne $userCfg) { $cfg = Merge-OrquestaObject -Base $cfg -Override $userCfg; $fuentes += $userPath }
 
@@ -405,4 +423,65 @@ function ConvertTo-RevisionMarkdown {
     $pa = @(Get-Prop $Json 'para_arquitecto')
     if ($pa.Count -gt 0) { $o.Add(''); $o.Add('### Para el arquitecto'); foreach ($p in $pa) { $o.Add("- $p") } }
     return ($o -join "`n")
+}
+
+function Read-ClaudeTranscriptUsage {
+    <#
+      Lee un transcript de Claude Code (<sesión>.jsonl o <sesión>/subagents/agent-<id>.jsonl) y devuelve un request
+      por respuesta del modelo: ts, model, in (input_tokens), cc (cache_creation_input_tokens),
+      cr (cache_read_input_tokens), out (output_tokens, incluye thinking).
+      Una respuesta se guarda como varias líneas (una por bloque de contenido) que repiten `message.id` y `usage`:
+      se deduplica por id tomando el máximo de cada campo. Sin esto los tokens se cuentan 2-4 veces.
+    #>
+    param([Parameter(Mandatory)][string]$Path)
+    $byId = [ordered]@{}
+    if (-not (Test-Path -LiteralPath $Path)) { return @() }
+    $reader = [IO.StreamReader]::new($Path)
+    try {
+        while ($null -ne ($line = $reader.ReadLine())) {
+            if ([string]::IsNullOrWhiteSpace($line)) { continue }
+            try { $o = $line | ConvertFrom-Json -Depth 30 } catch { continue }
+            if ("$(Get-Prop $o 'type')" -ne 'assistant') { continue }
+            $u = Get-Prop $o 'message.usage'
+            if ($null -eq $u) { continue }
+            $id = "$(Get-Prop $o 'message.id')"; if (-not $id) { $id = "$(Get-Prop $o 'requestId')" }; if (-not $id) { $id = "$(Get-Prop $o 'uuid')" }
+            if (-not $byId.Contains($id)) {
+                $ts = try { [datetime]"$(Get-Prop $o 'timestamp')" } catch { Get-Date }
+                $byId[$id] = [pscustomobject]@{ ts = $ts; model = "$(Get-Prop $o 'message.model')"; in = 0L; cc = 0L; cr = 0L; out = 0L }
+            }
+            $r = $byId[$id]
+            $r.in  = [math]::Max($r.in,  [int64]"$(if ($null -ne (Get-Prop $u 'input_tokens')) { Get-Prop $u 'input_tokens' } else { 0 })")
+            $r.cc  = [math]::Max($r.cc,  [int64]"$(if ($null -ne (Get-Prop $u 'cache_creation_input_tokens')) { Get-Prop $u 'cache_creation_input_tokens' } else { 0 })")
+            $r.cr  = [math]::Max($r.cr,  [int64]"$(if ($null -ne (Get-Prop $u 'cache_read_input_tokens')) { Get-Prop $u 'cache_read_input_tokens' } else { 0 })")
+            $r.out = [math]::Max($r.out, [int64]"$(if ($null -ne (Get-Prop $u 'output_tokens')) { Get-Prop $u 'output_tokens' } else { 0 })")
+        }
+    } finally { $reader.Close() }
+    return @($byId.Values)
+}
+
+function Get-FamiliaModelo {
+    # fable | opus | sonnet | haiku | codex | '' (desconocido) a partir del id del modelo.
+    param([string]$Modelo)
+    $m = "$Modelo".ToLowerInvariant()
+    if ($m -match 'fable|mythos') { return 'fable' }
+    if ($m -match 'opus')   { return 'opus' }
+    if ($m -match 'sonnet') { return 'sonnet' }
+    if ($m -match 'haiku')  { return 'haiku' }
+    if ($m -match '^gpt|codex|^o\d') { return 'codex' }
+    return ''
+}
+
+function Get-CostoTokens {
+    <#
+      USD nominal según costos.tarifas de la config (por millón): entrada, cache_escritura, cache_lectura, salida.
+      Familia desconocida → tarifa de opus (y el que llama lo marca como asumido).
+    #>
+    param([Parameter(Mandatory)]$Config, [string]$Familia, [int64]$In = 0, [int64]$Cc = 0, [int64]$Cr = 0, [int64]$Out = 0)
+    if (-not $Familia) { $Familia = 'opus' }
+    $t = Get-Prop $Config "costos.tarifas.$Familia"
+    if ($null -eq $t) { $t = Get-Prop $Config 'costos.tarifas.opus' }
+    if ($null -eq $t) { return 0.0 }
+    $v = { param($k) $x = Get-Prop $t $k; if ($null -eq $x) { 0.0 } else { [double]$x } }
+    $usd = $In * (& $v 'entrada') + $Cc * (& $v 'cache_escritura') + $Cr * (& $v 'cache_lectura') + $Out * (& $v 'salida')
+    return [math]::Round($usd / 1e6, 2)
 }

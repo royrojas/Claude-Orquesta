@@ -7,7 +7,7 @@ Plugin de Claude Code que separa **pensar** de **hacer**: el modelo principal (F
 ```
  vos ──► /orquesta:arquitecto "objetivo"
               │
-              ├─ 1. cartógrafo (haiku)   lee graphify + Obsidian + repo → mapa
+              ├─ 1. cartógrafo (sonnet)  lee graphify + Obsidian + repo → mapa
               ├─ 2. clarificar           una sola ronda de preguntas, todas juntas
               ├─ 3. PLAN.md              decisiones + tareas con tier → vos aprobás
               ├─ 4. BRIEF-NN.md ──► implementador (sonnet) / senior (opus)
@@ -49,6 +49,7 @@ claude --model fable            # o /model fable dentro de la sesión
 | `/orquesta:arquitecto <objetivo>` | Corre el protocolo completo. Si ya hay un PLAN `en-ejecucion` o `pausado`, **reanuda** desde donde quedó. |
 | `/orquesta:revisar BRIEF-03` · `/orquesta:revisar final` | Revisión con ojos frescos bajo demanda (subagente revisor, solo lectura + build/tests). |
 | `/orquesta:estado` | Modelo por trabajador y de dónde sale, estado del PLAN, graphify/Obsidian, delegaciones por modelo. |
+| `/orquesta:costos` | Costo medido por actor y modelo: `usage` real de los transcripts de Claude Code (arquitecto y subagentes) + tokens de Codex de la bitácora, valorados con `costos.tarifas`. Señala requests, contexto y arranques en frío del arquitecto. |
 | `/orquesta:init` | Crea `.claude/orquesta.json` del proyecto (esqueleto mínimo, editable, carpetas de Obsidian pre-llenadas desde el `CLAUDE.md`) y te pregunta quién implementa / quién toma lo difícil / quién revisa; escribe solo lo que elegís. No sobreescribe sin preguntar. |
 | `/orquesta:doctor` | Diagnóstico del entorno: pwsh, hooks, config, Codex CLI y login, plugin de OpenAI, graphify, git. Corré esto después de instalar y siempre después de `/orquesta:init`. |
 
@@ -59,7 +60,7 @@ El arquitecto también se activa solo si le pedís "hacelo con subagentes", "mod
 | Trabajador | Modelo por defecto | Rol |
 |---|---|---|
 | **arquitecto** (la sesión) | fable | Habla con vos, decide, escribe PLAN/BRIEFs, aprueba. **No escribe código.** |
-| `orquesta:cartografo` | haiku | Solo lectura: graphify (`GRAPH_REPORT.md`, `graphify query`), notas de Obsidian, repo → mapa de 60 líneas. |
+| `orquesta:cartografo` | sonnet | Solo lectura: graphify (`GRAPH_REPORT.md`, `graphify query`), notas de Obsidian, repo → mapa de 60 líneas. |
 | `orquesta:implementador` | sonnet | Ejecuta exactamente un BRIEF. Sin alcance extra, sin commits, `BLOQUEADO` antes que adivinar. |
 | `orquesta:implementador-senior` | opus | Migraciones, SQL Server + Oracle, stored procedures, concurrencia, Azure Functions, Key Vault, reintentos escalados. |
 | `orquesta:revisor` | opus | Ojos frescos, solo lectura + corre build/tests. Único que marca `[x]` y la verificación final `V.`. |
@@ -176,7 +177,7 @@ plugins/orquesta/
 pwsh -NoProfile -File plugins/orquesta/tests/Test-Orquesta.ps1
 ```
 
-216 aserciones sin dependencias: JSON de manifiestos y hooks, frontmatter de agentes y skills, sintaxis de todos los scripts, merge de config, y cada compuerta alimentada con el JSON que Claude Code manda por stdin (deny/allow/block/nudge, `agent_id`, `stop_hook_active`, `ORQUESTA_GATES`), más el motor Codex contra un `codex` falso (compuertas, flags, REPORTE, thread_id, resume, tokens), la validación de forma de BRIEFs, el aviso de sesión, la salida estructurada (JSON → REPORTE/REVISIÓN) y el doctor.
+245 aserciones sin dependencias: JSON de manifiestos y hooks, frontmatter de agentes y skills, sintaxis de todos los scripts, merge de config, y cada compuerta alimentada con el JSON que Claude Code manda por stdin (deny/allow/block/nudge, `agent_id`, `stop_hook_active`, `ORQUESTA_GATES`), más el motor Codex contra un `codex` falso (compuertas, flags, REPORTE, thread_id, resume, tokens), la validación de forma de BRIEFs, el aviso de sesión, la salida estructurada (JSON → REPORTE/REVISIÓN) y el doctor.
 
 El repo trae un workflow de GitHub Actions (`.github/workflows/tests.yml`) que corre la misma suite en **windows-latest y ubuntu-latest** en cada push. Es la prueba en Windows que no se puede hacer desde Linux: rutas con `\`, shims `.cmd`, finales de línea.
 

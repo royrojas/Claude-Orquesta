@@ -1,5 +1,36 @@
 # Changelog
 
+## 1.4.0 — 2026-09-16
+Derivado de medir la primera orquestación real (5 tareas, arquitecto Fable) desde el `usage` de los
+transcripts: el arquitecto hizo 118 requests con un contexto que creció a 453k y costó $22–25, más
+que los 15 subagentes juntos; la retro que estimó $8–10 se equivocó por 2,5–3x. La palanca es
+requests × contexto + salida (thinking incluido), no el modelo. Cambios:
+- **`/orquesta:costos`** + `Show-Costos.ps1`: costo medido por actor y modelo. Lee el `usage` real de
+  cada request en `~/.claude/projects/<slug>/<sesión>.jsonl` y `<sesión>/subagents/*.jsonl`
+  (deduplicando las líneas de un mismo request), asocia cada subagente a su rol vía el `agent_id`
+  de la bitácora, suma los tokens de Codex de la bitácora y valora todo con `costos.tarifas`
+  (nuevo bloque en los defaults, editable). Señales: requests y contexto máximo del arquitecto,
+  costo por request y **arranques en frío** (requests que re-escriben ≥ 100k de caché: reanudar
+  una sesión larga tras más de una hora o cambiar de modelo con `/model`). `-Json` para el
+  dashboard. Sesiones desde la bitácora (campo `sesion` de los hooks) o `-Sesion <id>`.
+- **`Marcar-Tarea.ps1`**: una llamada por dictamen marca `[x]`/`[~]`, agrega la fila a
+  `## Bitácora de revisión` y deja un evento `tarea` en `bitacora.jsonl`. Reemplaza los 2–3 Edits
+  sueltos que el arquitecto hacía por tarea (58 Edits en la orquestación medida). `INFRA` registra
+  un fallo de infraestructura sin contarlo como intento.
+- **Skill arquitecto**: sección "Economía de contexto" (una llamada por registro, sin polling,
+  contratos vía cartógrafo, no invocar otras skills durante la orquestación, no `/model` a mitad,
+  cierre/retro/memoria al documentador o a una sesión nueva); Fase 1 pide contratos al cartógrafo
+  en una segunda pasada en vez de leer el repo; Fase 5 registra con `Marcar-Tarea.ps1`; el cierre
+  corre `Show-Costos.ps1` y delega la retrospectiva.
+- **Cartógrafo en Sonnet** (antes Haiku) con dos modos: mapa y "contratos para un BRIEF" (≤ 40
+  líneas, fragmentos textuales con `archivo:línea`), y marca `[inferido]` lo que no leyó. En la
+  orquestación medida el mapa de Haiku trajo 3 hechos viejos y el arquitecto gastó el 38 % de su
+  costo en recon propio.
+- **Documentador**: modo RETRO (retrospectiva desde PLAN + bitácora + `Show-Costos.ps1`), para que
+  la escriba un sonnet fresco y no el arquitecto al final de una sesión de 450k.
+- README §5 (`/orquesta:costos`, scripts), §7, §14 (costos medidos y qué encarece al arquitecto).
+- 29 aserciones nuevas (245).
+
 ## 1.3.9 — 2026-09-16
 - `Show-Estado`: línea vacía después de la tabla de trabajadores. Una tabla Markdown sigue
   hasta la primera línea vacía, así que "Motor codex", "Paralelo máx" y "Overrides" se

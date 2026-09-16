@@ -8,10 +8,10 @@
   "trabajadores": {
     "_doc": "Modelo y motor por trabajador. motor: 'claude' (subagente de Claude Code; modelo = haiku | sonnet | opus | fable | inherit; los IDs completos no los acepta el Agent tool) o 'codex' (proceso `codex exec` de OpenAI Codex CLI; modelo = el de Codex, vacío = su default). El arquitecto pasa el modelo en cada llamada, así que manda sobre el frontmatter del agente.",
     "cartografo": {
-      "modelo": "haiku",
+      "modelo": "sonnet",
       "motor": "claude",
-      "esfuerzo": "low",
-      "rol": "Reconocimiento de solo lectura (graphify, Obsidian, repo)."
+      "esfuerzo": "medium",
+      "rol": "Reconocimiento de solo lectura (graphify, Obsidian, repo) con contratos textuales para los BRIEFs."
     },
     "implementador": {
       "modelo": "sonnet",
@@ -121,6 +121,16 @@
       "prefijo_adr": "ADR-",
       "prefijo_handoff": "HANDOFF-",
       "_doc": "usar=false apaga ADR/HANDOFF por completo (Show-Estado/Doctor lo muestran como 'desactivado', el arquitecto no delega al documentador). vault_root: ruta absoluta a tu vault de Obsidian — va en ~/.claude/orquesta.json (PERSONAL, nunca en el .claude/orquesta.json del proyecto, que se comparte con el equipo). Si está seteado, carpeta_decisiones/carpeta_handoffs (si NO son ya absolutas) se resuelven relativas a vault_root en vez de al repo — así el proyecto declara algo compartible como 'Proyectos/MiProyecto/Decisiones' y cada persona lo resuelve contra su propio vault. Si carpeta_decisiones/carpeta_handoffs ya son una ruta absoluta, se usan tal cual y vault_root se ignora."
+    }
+  },
+  "costos": {
+    "_doc": "Tarifas nominales en USD por millón de tokens para /orquesta:costos (Show-Costos.ps1): entrada = tokens no cacheados, cache_escritura = cache_creation_input_tokens (1,25x la entrada con TTL de 5 min; 2x con TTL de 1 h), cache_lectura = cache_read_input_tokens, salida = output_tokens (incluye thinking). Familia = fable | opus | sonnet | haiku | codex, detectada del id del modelo; un modelo sin familia usa la de opus y el script lo avisa. Con suscripción es solo referencia: los tokens sí cuentan contra la cuota. Ajustá acá si tu plan tiene otro precio.",
+    "tarifas": {
+      "fable":  { "entrada": 10,   "cache_escritura": 12.5, "cache_lectura": 0.25, "salida": 50 },
+      "opus":   { "entrada": 5,    "cache_escritura": 6.25, "cache_lectura": 0.5,  "salida": 25 },
+      "sonnet": { "entrada": 2,    "cache_escritura": 2.5,  "cache_lectura": 0.2,  "salida": 10 },
+      "haiku":  { "entrada": 1,    "cache_escritura": 1.25, "cache_lectura": 0.1,  "salida": 5 },
+      "codex":  { "entrada": 1.25, "cache_escritura": 0,    "cache_lectura": 0,    "salida": 10 }
     }
   },
   "rutas": {
