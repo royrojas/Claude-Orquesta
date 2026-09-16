@@ -250,7 +250,7 @@ Corre el protocolo completo. Sin argumento y con PLAN abierto, reanuda.
 /orquesta:arquitecto                      ← reanudar el PLAN en ejecución
 ```
 
-También se activa solo si pedís "hacelo con subagentes", "modo arquitecto", o una feature/migración de varios pasos. Para un cambio de una función no abre PLAN: lo hace directo (o te pregunta en una línea si dudás).
+Solo corre cuando lo invocás con `/orquesta:arquitecto`. Ningún skill de orquesta se activa por su cuenta (`disable-model-invocation: true` en todos): pedir "hacelo con subagentes" o "modo arquitecto" en el chat no abre un PLAN ni delega nada, así que el modelo de la sesión trabaja directo hasta que vos lo llamás. Para un cambio de una función no hace falta el arquitecto: hacelo directo.
 
 ### `/orquesta:revisar [alcance]`
 
@@ -925,7 +925,7 @@ Claude-Orquesta/
     ├── schemas/           reporte.schema.json · revision.schema.json
     ├── config/orquesta.defaults.json
     ├── ejemplos/          orquesta.json · orquesta-codex.json
-    ├── tests/             Test-Orquesta.ps1 (245 aserciones) · fake-codex.ps1
+    ├── tests/             Test-Orquesta.ps1 (251 aserciones) · fake-codex.ps1
     ├── README.md          ficha técnica del plugin
     └── CHANGELOG.md
 ```
@@ -948,6 +948,10 @@ Sin dependencias (ni Pester). Valida JSON de manifiestos y hooks, frontmatter de
 ## Changelog
 
 El detalle por versión vive en [`plugins/orquesta/CHANGELOG.md`](plugins/orquesta/CHANGELOG.md).
+
+### 2026-09-16 — 1.4.1: ningún skill de orquesta se activa solo
+- El arquitecto ya no arranca por su cuenta cuando hablás de subagentes, delegar o "modo arquitecto": solo corre con `/orquesta:arquitecto`. Los seis skills llevan `disable-model-invocation: true`.
+- Evita PLANes y delegaciones que no pediste; el modelo de la sesión trabaja directo hasta que lo invocás.
 
 ### 2026-09-16 — 1.4.0: costos medidos, registro en una llamada y economía de contexto
 - Nuevo `/orquesta:costos` (`Show-Costos.ps1`): cuánto costó la orquestación leyendo el `usage` real de los transcripts de Claude Code y los tokens de Codex, por actor y modelo, con tarifas editables en `costos.tarifas`.

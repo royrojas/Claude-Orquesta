@@ -53,7 +53,7 @@ claude --model fable            # o /model fable dentro de la sesión
 | `/orquesta:init` | Crea `.claude/orquesta.json` del proyecto (esqueleto mínimo, editable, carpetas de Obsidian pre-llenadas desde el `CLAUDE.md`) y te pregunta quién implementa / quién toma lo difícil / quién revisa; escribe solo lo que elegís. No sobreescribe sin preguntar. |
 | `/orquesta:doctor` | Diagnóstico del entorno: pwsh, hooks, config, Codex CLI y login, plugin de OpenAI, graphify, git. Corré esto después de instalar y siempre después de `/orquesta:init`. |
 
-El arquitecto también se activa solo si le pedís "hacelo con subagentes", "modo arquitecto", o una feature/migración de varios pasos. Para un cambio de una función no abre PLAN: lo hace directo.
+Ningún skill de orquesta se activa por su cuenta (`disable-model-invocation: true` en los seis): el arquitecto solo corre cuando escribís `/orquesta:arquitecto`. Pedir "hacelo con subagentes" o "modo arquitecto" en el chat no abre un PLAN. Para un cambio de una función no hace falta: hacelo directo.
 
 ## Quién hace qué
 
@@ -177,7 +177,7 @@ plugins/orquesta/
 pwsh -NoProfile -File plugins/orquesta/tests/Test-Orquesta.ps1
 ```
 
-245 aserciones sin dependencias: JSON de manifiestos y hooks, frontmatter de agentes y skills, sintaxis de todos los scripts, merge de config, y cada compuerta alimentada con el JSON que Claude Code manda por stdin (deny/allow/block/nudge, `agent_id`, `stop_hook_active`, `ORQUESTA_GATES`), más el motor Codex contra un `codex` falso (compuertas, flags, REPORTE, thread_id, resume, tokens), la validación de forma de BRIEFs, el aviso de sesión, la salida estructurada (JSON → REPORTE/REVISIÓN) y el doctor.
+251 aserciones sin dependencias: JSON de manifiestos y hooks, frontmatter de agentes y skills, sintaxis de todos los scripts, merge de config, y cada compuerta alimentada con el JSON que Claude Code manda por stdin (deny/allow/block/nudge, `agent_id`, `stop_hook_active`, `ORQUESTA_GATES`), más el motor Codex contra un `codex` falso (compuertas, flags, REPORTE, thread_id, resume, tokens), la validación de forma de BRIEFs, el aviso de sesión, la salida estructurada (JSON → REPORTE/REVISIÓN) y el doctor.
 
 El repo trae un workflow de GitHub Actions (`.github/workflows/tests.yml`) que corre la misma suite en **windows-latest y ubuntu-latest** en cada push. Es la prueba en Windows que no se puede hacer desde Linux: rutas con `\`, shims `.cmd`, finales de línea.
 

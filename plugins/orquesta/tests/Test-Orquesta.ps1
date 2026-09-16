@@ -104,6 +104,7 @@ foreach ($s in Get-ChildItem (Join-Path $Root 'skills') -Directory) {
     $fm = Get-Frontmatter $skill
     Assert ($null -ne $fm -and $fm.ContainsKey('description')) "skills/$($s.Name): description en frontmatter"
     Assert ((Get-Content $skill).Count -lt 500) "skills/$($s.Name): menos de 500 líneas"
+    Assert ($null -ne $fm -and $fm.ContainsKey('disable-model-invocation') -and $fm['disable-model-invocation'] -eq 'true') "skills/$($s.Name): solo se invoca con /orquesta:$($s.Name) (disable-model-invocation: true)"
     if ($null -ne $fm -and $fm.ContainsKey('allowed-tools')) { Assert ($fm['allowed-tools'] -notmatch '\)\s+[A-Za-z]') "skills/$($s.Name): allowed-tools separado por comas" }
 }
 $skArq = Get-Content (Join-Path $Root 'skills/arquitecto/SKILL.md') -Raw -Encoding UTF8

@@ -20,7 +20,7 @@ jobs:
         shell: pwsh
         run: $PSVersionTable.PSVersion.ToString()
 
-      - name: Suite de pruebas (245 aserciones, sin dependencias)
+      - name: Suite de pruebas (251 aserciones, sin dependencias)
         shell: pwsh
         run: ./plugins/orquesta/tests/Test-Orquesta.ps1
 

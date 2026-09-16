@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.4.1 — 2026-09-16
+- El skill `arquitecto` ya no se activa solo: `disable-model-invocation: true`, como los otros
+  cinco. Su descripción invitaba a dispararlo ante "subagentes", "delegar", "modo arquitecto" o
+  "una feature de varios pasos, aunque no mencione orquesta", y eso abría PLANes que el usuario
+  no pidió. Ahora todos los skills de orquesta corren únicamente con `/orquesta:<nombre>`.
+- Aserción nueva en el bucle de skills: cada uno tiene la marca (6 → 251 aserciones).
+- README §5 y ficha del plugin: quitada la frase "también se activa solo".
+
 ## 1.4.0 — 2026-09-16
 Derivado de medir la primera orquestación real (5 tareas, arquitecto Fable) desde el `usage` de los
 transcripts: el arquitecto hizo 118 requests con un contexto que creció a 453k y costó $22–25, más

@@ -1,8 +1,9 @@
 ---
 name: arquitecto
-description: Protocolo "arquitecto" de orquesta. El modelo principal (Fable/Opus) clarifica, diseña, escribe el PLAN y un BRIEF por tarea, delega la implementación a trabajadores con el motor y el modelo configurados por tier (subagentes de Claude haiku/sonnet/opus o procesos de Codex CLI) y solo aprueba cada entrega tras un revisor independiente. Usalo siempre que el usuario pida orquestar, delegar, trabajar con subagentes, "modo arquitecto", o una feature, refactor o migración de varios pasos donde convenga separar diseño de implementación, aunque no mencione "orquesta". No aplica a un cambio de una función o un archivo: eso se hace directo. También cuando escriba /arquitecto.
+description: Protocolo "arquitecto" de orquesta. El modelo principal (Fable/Opus) clarifica, diseña, escribe el PLAN y un BRIEF por tarea, delega la implementación a trabajadores con el motor y el modelo configurados por tier (subagentes de Claude haiku/sonnet/opus o procesos de Codex CLI) y solo aprueba cada entrega tras un revisor independiente. Se invoca únicamente de forma explícita con /orquesta:arquitecto <objetivo> (o sin argumento para reanudar un PLAN abierto); nunca se activa solo, aunque el usuario hable de subagentes, delegar o "modo arquitecto".
 argument-hint: [objetivo]
 allowed-tools: Bash(pwsh *), PowerShell(pwsh *)
+disable-model-invocation: true
 ---
 
 # Arquitecto — protocolo orquesta
