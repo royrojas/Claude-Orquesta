@@ -338,6 +338,10 @@ En la práctica alcanza con el archivo del proyecto: el global es opcional y no 
 | `enrutamiento.senior_si` | lista | Subcadenas en el título/descripción de una tarea que la mandan a `implementador-senior` (`migraci`, `oracle`, `concurren`, `azure function`, `key vault`…). |
 | `enrutamiento.seguridad_si` | lista | Subcadenas que suman `auditor-seguridad` a la revisión (`sql`, `dapper`, `secret`, `auth`, `endpoint`, `input`…). |
 | `enrutamiento.max_reintentos_por_tarea` | `2` | Rechazos del revisor antes de escalar de tier. |
+| `enrutamiento.umbral_archivos_tocados` | `5` | Si un BRIEF va a tocar más archivos que esto, `implementador-senior` de entrada (evita perder un intento del tier base en una tarea que ya se ve grande). |
+| `enrutamiento.umbral_lineas_estimadas` | `400` | Igual que arriba, por líneas de cambio estimadas por el arquitecto. |
+| `enrutamiento.max_escalados_por_ciclo` | `2` | Tope de escalados por PLAN. Al llegarlo, la siguiente tarea que pediría escalar vuelve al arquitecto para partirla en tareas más chicas en vez de escalar de nuevo. |
+| `enrutamiento.requiere_motivo_escalado` | `true` | Cada escalado deja anotado en `## Bitácora de revisión` qué disparador lo activó (dominio/alcance/reintentos). |
 | `limites.max_paralelo` | `3` | Trabajadores en paralelo. Más no acelera: te satura de reportes. |
 | `limites.max_lineas_reporte` | `40` | Tope de un REPORTE; lo largo va a `.orquesta/reportes/`. |
 | `limites.compuerta_delegacion_chars` | `1200` | Cualquier delegación con prompt ≥ esto exige PLAN aunque no sea a un trabajador de orquesta. |
@@ -925,7 +929,7 @@ Claude-Orquesta/
     ├── schemas/           reporte.schema.json · revision.schema.json
     ├── config/orquesta.defaults.json
     ├── ejemplos/          orquesta.json · orquesta-codex.json
-    ├── tests/             Test-Orquesta.ps1 (251 aserciones) · fake-codex.ps1
+    ├── tests/             Test-Orquesta.ps1 (258 aserciones) · fake-codex.ps1
     ├── README.md          ficha técnica del plugin
     └── CHANGELOG.md
 ```

@@ -57,7 +57,7 @@
     }
   },
   "enrutamiento": {
-    "_doc": "Señales que mandan una tarea directo al implementador-senior. Comparación por subcadena, sin distinguir mayúsculas, sobre el título+descripción de la tarea.",
+    "_doc": "Señales que mandan una tarea directo al implementador-senior. Comparación por subcadena, sin distinguir mayúsculas, sobre el título+descripción de la tarea. umbral_archivos_tocados/umbral_lineas_estimadas: si el BRIEF va a tocar más archivos o líneas que esto, escala de entrada igual que un dominio sensible de senior_si (evita gastar un intento del tier base en una tarea que ya se ve grande). max_escalados_por_ciclo: tope de escalados por PLAN — al llegarlo, la siguiente tarea que pediría escalar vuelve al arquitecto para partirla en vez de escalar de nuevo. requiere_motivo_escalado: si es true, cada escalado deja anotado en '## Bitácora de revisión' qué disparador lo activó (dominio/alcance/reintentos).",
     "senior_si": [
       "migraci",
       "oracle",
@@ -100,7 +100,11 @@
       "implementador-senior",
       "arquitecto"
     ],
-    "max_reintentos_por_tarea": 2
+    "max_reintentos_por_tarea": 2,
+    "umbral_archivos_tocados": 5,
+    "umbral_lineas_estimadas": 400,
+    "max_escalados_por_ciclo": 2,
+    "requiere_motivo_escalado": true
   },
   "limites": {
     "max_paralelo": 3,

@@ -113,6 +113,10 @@ Assert ($skArq -match 'preferencia permanente' -and $skArq -match 'AskUserQuesti
 Assert ($skArq -match 'rutas resueltas y literales' -and $skArq -match 'nunca le digas solo') "arquitecto: le pasa al documentador las rutas de Obsidian resueltas, no en abstracto"
 Assert ($skArq -match 'Marcar-Tarea\.ps1' -and $skArq -match 'Economía de contexto' -and $skArq -match 'No invoqués otras skills' -and $skArq -match '/model') "arquitecto: economía de contexto (registro con Marcar-Tarea, sin skills ajenas, sin /model a mitad)"
 Assert ($skArq -match 'Show-Costos\.ps1' -and $skArq -match 'modo RETRO' -and $skArq -match 'segunda pasada dirigida') "arquitecto: cierra con costos medidos, delega la retro al documentador y pide contratos al cartógrafo en vez de recon propio"
+Assert ($skArq -match 'umbral_archivos_tocados' -and $skArq -match 'max_escalados_por_ciclo') "arquitecto: elige tier también por alcance (archivos/líneas) y respeta el tope de escalados por PLAN"
+$refEnrutamiento = Get-Content (Join-Path $Root 'skills/arquitecto/referencias/enrutamiento.md') -Raw -Encoding UTF8
+Assert ($refEnrutamiento -match 'umbral_archivos_tocados' -and $refEnrutamiento -match 'umbral_lineas_estimadas') "enrutamiento.md: dispara escalado también por alcance (archivos/líneas), no solo por dominio"
+Assert ($refEnrutamiento -match 'max_escalados_por_ciclo' -and $refEnrutamiento -match 'requiere_motivo_escalado') "enrutamiento.md: documenta el tope de escalados por PLAN y la exigencia de motivo"
 $agCarto = Get-Content (Join-Path $Root 'agents/cartografo.md') -Raw -Encoding UTF8
 Assert ((Get-Frontmatter (Join-Path $Root 'agents/cartografo.md'))['model'] -eq 'sonnet' -and $agCarto -match 'Contratos para un BRIEF' -and $agCarto -match '\[inferido\]') "cartógrafo: sonnet, modo 'contratos para un BRIEF' y marca [inferido]"
 Assert ((Get-Content (Join-Path $Root 'agents/documentador.md') -Raw -Encoding UTF8) -match '## RETRO') "documentador: sabe escribir la RETRO (no la escribe el arquitecto)"
@@ -134,6 +138,10 @@ Assert ($cfgJson.trabajadores.implementador.esfuerzo -eq 'medium') "merge profun
 Assert ($cfgJson.trabajadores.revisor.modelo -eq 'opus') "otros trabajadores conservan defaults"
 Assert ($cfgJson.limites.max_paralelo -eq 5) "override de límites aplica"
 Assert ($cfgJson._fuentes.Count -ge 2) "_fuentes lista defaults + proyecto"
+Assert ($cfgJson.enrutamiento.umbral_archivos_tocados -eq 5) "default de enrutamiento.umbral_archivos_tocados"
+Assert ($cfgJson.enrutamiento.umbral_lineas_estimadas -eq 400) "default de enrutamiento.umbral_lineas_estimadas"
+Assert ($cfgJson.enrutamiento.max_escalados_por_ciclo -eq 2) "default de enrutamiento.max_escalados_por_ciclo"
+Assert ($cfgJson.enrutamiento.requiere_motivo_escalado -eq $true) "default de enrutamiento.requiere_motivo_escalado"
 
 Write-Host "`n== 6. Initialize-Orquesta ==" -ForegroundColor Cyan
 $initOut = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Initialize-Orquesta.ps1') -Objetivo 'Exportar cierres de caja a CSV' -Cwd $tmp

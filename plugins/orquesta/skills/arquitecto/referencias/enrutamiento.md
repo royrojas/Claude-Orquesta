@@ -8,6 +8,7 @@ La regla de fondo: **el modelo caro piensa y juzga; el modelo barato ejecuta lo 
 |---|---|---|
 | CRUD, mapeos, DTOs, endpoints con contrato dado, tests unitarios, refactor local, PowerShell de tooling | `implementador` | El contrato ya está en el BRIEF; el modelo solo tiene que seguirlo con cuidado. |
 | Migraciones, SQL Server + Oracle a la vez, stored procedures, transacciones/concurrencia, Azure Functions con triggers, Key Vault/Managed Identity, cambios que cruzan 3+ proyectos de la solución | `implementador-senior` | Equivocarse cuesta caro y la corrección requiere juicio, no solo obediencia. |
+| El BRIEF va a tocar más de `umbral_archivos_tocados` archivos o el arquitecto estima más de `umbral_lineas_estimadas` líneas | `implementador-senior` de entrada | Si arranca en el tier base igual paga un ciclo completo de implementación + revisor antes de escalar; una tarea que ya se ve grande no necesita esa vuelta perdida. |
 | Tarea devuelta `BLOQUEADO` dos veces o `RECHAZADO` `max_reintentos_por_tarea` veces | escalar un tier | Reintentar en el mismo tier con el mismo BRIEF rara vez cambia el resultado. |
 | Cualquier tarea que toque SQL, capa de datos, entrada externa, auth, secretos | + `auditor-seguridad` en la revisión | Un revisor generalista no busca inyección con la misma insistencia. |
 | Recon, "¿dónde está X?", "¿cómo se prueba esto?" | `cartografo` | Solo lectura, modelo barato, resultado acotado. |
@@ -20,6 +21,10 @@ Las señales `senior_si` y `seguridad_si` de la config son subcadenas a buscar e
 El arquitecto **no implementa** al escalar: si el senior no pudo, el problema casi siempre es el BRIEF (contrato incompleto, criterio no verificable, dependencia oculta), no el modelo.
 
 Nunca reformules una tarea rechazada para que "pase": si un criterio no se puede cumplir, se difiere `[~]` con aprobación del usuario y queda escrito en `## Diferido`.
+
+**Tope por PLAN.** Antes de escalar, contá cuántas tareas de este PLAN ya escalaron mirando los cambios de tier en `## Bitácora de revisión`. Al llegar a `max_escalados_por_ciclo`, no escalés una tarea más: partila vos en 2-3 tareas más chicas con contratos más finos, como cuando el senior tampoco puede (no es un fallo distinto, es el mismo síntoma — el BRIEF pedía demasiado).
+
+**Motivo.** Con `requiere_motivo_escalado` en `true` (default), todo escalado necesita una razón registrada: en `-Notas` de `Marcar-Tarea.ps1` anotá cuál disparador lo activó (`dominio` / `alcance` / `reintentos`). Sin motivo no hay escalado — es el dato que después deja calibrar los umbrales con `/orquesta:costos` en vez de a ojo.
 
 ## Paralelismo
 - Paralelizá solo tareas sin dependencia de archivos ni de contrato entre sí. Dos trabajadores editando el mismo archivo = conflicto garantizado.

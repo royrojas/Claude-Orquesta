@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.4.2 — 2026-09-21
+El enrutamiento solo escalaba por dominio (`senior_si`) o por reintentos agotados; una tarea grande
+sin palabra de riesgo pagaba un ciclo completo de implementación + revisor en el tier base antes de
+escalar recién al segundo rechazo. Y nada le ponía techo a escalar-fallar-escalar en bucle. Cambios
+en `enrutamiento` (sin bloque de config nuevo, todo dentro del existente):
+- **`umbral_archivos_tocados` (5) / `umbral_lineas_estimadas` (400)**: si un BRIEF va a tocar más
+  archivos o líneas que esto, `implementador-senior` de entrada, igual que un dominio sensible.
+- **`max_escalados_por_ciclo` (2)**: al llegarlo, la siguiente tarea que pediría escalar vuelve al
+  arquitecto para partirla en tareas más chicas en vez de escalar de nuevo.
+- **`requiere_motivo_escalado` (true)**: todo escalado deja anotado en `-Notas` de `Marcar-Tarea.ps1`
+  qué disparador lo activó (dominio/alcance/reintentos), para calibrar los umbrales con
+  `/orquesta:costos` en vez de a ojo.
+- `referencias/enrutamiento.md` y el skill `arquitecto` (Fase 3 y Fase 5) documentan las reglas
+  nuevas; README §6 (tabla de config) al día.
+- 7 aserciones nuevas (258): defaults de los 4 campos nuevos y que `enrutamiento.md`/`SKILL.md`
+  documenten alcance, tope y motivo.
+
 ## 1.4.1 — 2026-09-16
 - El skill `arquitecto` ya no se activa solo: `disable-model-invocation: true`, como los otros
   cinco. Su descripción invitaba a dispararlo ante "subagentes", "delegar", "modo arquitecto" o
