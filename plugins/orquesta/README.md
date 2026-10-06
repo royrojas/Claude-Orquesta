@@ -85,7 +85,7 @@ La config se resuelve por merge profundo: `config/orquesta.defaults.json` (plugi
 }
 ```
 
-Valores: `haiku`, `sonnet`, `opus`, `fable` o `inherit` (el modelo de la sesión); los IDs completos (`claude-sonnet-5`) no los acepta el Agent tool, usá el alias. El arquitecto pasa `model:` en **cada** llamada al subagente, así que tu config manda sobre el frontmatter de los agentes. Si en el chat decís "usá opus para todo", eso manda durante esa orquestación y queda anotado en `## Enrutamiento → Overrides` del PLAN.
+Valores: `haiku`, `sonnet`, `opus`, `fable` o `inherit` (el modelo de la sesión); los IDs completos (`claude-sonnet-5-5`) no los acepta el Agent tool, usá el alias. El arquitecto pasa `model:` y `effort:` (`esfuerzo`: `low` | `medium` | `high` | `xhigh` | `max`; con `haiku` lo omite) en **cada** llamada al subagente, así que tu config manda sobre el frontmatter de los agentes. Si en el chat decís "usá opus para todo", eso manda durante esa orquestación y queda anotado en `## Enrutamiento → Overrides` del PLAN.
 
 El modelo del arquitecto es el de la sesión (`claude --model fable`); la config solo lo declara para avisarte si no coincide. Verificá con `/tasks` qué modelo corre cada subagente.
 
@@ -177,7 +177,7 @@ plugins/orquesta/
 pwsh -NoProfile -File plugins/orquesta/tests/Test-Orquesta.ps1
 ```
 
-258 aserciones sin dependencias: JSON de manifiestos y hooks, frontmatter de agentes y skills, sintaxis de todos los scripts, merge de config, y cada compuerta alimentada con el JSON que Claude Code manda por stdin (deny/allow/block/nudge, `agent_id`, `stop_hook_active`, `ORQUESTA_GATES`), más el motor Codex contra un `codex` falso (compuertas, flags, REPORTE, thread_id, resume, tokens), la validación de forma de BRIEFs, el aviso de sesión, la salida estructurada (JSON → REPORTE/REVISIÓN) y el doctor.
+267 aserciones sin dependencias: JSON de manifiestos y hooks, frontmatter de agentes y skills, sintaxis de todos los scripts, merge de config, y cada compuerta alimentada con el JSON que Claude Code manda por stdin (deny/allow/block/nudge, `agent_id`, `stop_hook_active`, `ORQUESTA_GATES`), más el motor Codex contra un `codex` falso (compuertas, flags, REPORTE, thread_id, resume, tokens), la validación de forma de BRIEFs, el aviso de sesión, la salida estructurada (JSON → REPORTE/REVISIÓN) y el doctor.
 
 El repo trae un workflow de GitHub Actions (`.github/workflows/tests.yml`) que corre la misma suite en **windows-latest y ubuntu-latest** en cada push. Es la prueba en Windows que no se puede hacer desde Linux: rutas con `\`, shims `.cmd`, finales de línea.
 

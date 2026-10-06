@@ -22,7 +22,9 @@ foreach ($p in $cfg.trabajadores.PSObject.Properties) {
     if ($p.Name -like '_*') { continue }
     $t = Get-TrabajadorInfo -Config $cfg -Nombre $p.Name
     if ($t.Motor -eq 'codex') { $hayCodex = $true }
-    $out.Add("| orquesta:$($t.Nombre) | $($t.Motor) | $($t.Modelo) | $($t.Esfuerzo) |")
+    # Haiku no tiene effort (Claude Code lo ignora): "—" le dice al arquitecto que no lo pase.
+    $esf = if ($t.Motor -eq 'claude' -and $t.Modelo -eq 'haiku') { '— (haiku)' } elseif ($t.Esfuerzo) { $t.Esfuerzo } else { '—' }
+    $out.Add("| orquesta:$($t.Nombre) | $($t.Motor) | $($t.Modelo) | $esf |")
 }
 $out.Add("")   # una tabla Markdown sigue hasta la primera línea vacía: sin esto, lo de abajo se vuelve filas
 if ($hayCodex) {

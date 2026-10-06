@@ -6,7 +6,7 @@
     "_doc": "Modelo con el que debe correr la sesión principal (el arquitecto). El skill no puede cambiar el modelo de la sesión: arrancá con `claude --model fable` o usá /model fable. Si estás en otro modelo, el arquitecto te lo avisa una vez y sigue."
   },
   "trabajadores": {
-    "_doc": "Modelo y motor por trabajador. motor: 'claude' (subagente de Claude Code; modelo = haiku | sonnet | opus | fable | inherit; los IDs completos no los acepta el Agent tool) o 'codex' (proceso `codex exec` de OpenAI Codex CLI; modelo = el de Codex, vacío = su default). El arquitecto pasa el modelo en cada llamada, así que manda sobre el frontmatter del agente.",
+    "_doc": "Modelo y motor por trabajador. motor: 'claude' (subagente de Claude Code; modelo = haiku | sonnet | opus | fable | inherit; los IDs completos no los acepta el Agent tool) o 'codex' (proceso `codex exec` de OpenAI Codex CLI; modelo = el de Codex, vacío = su default). El arquitecto pasa el modelo y el esfuerzo en cada llamada, así que mandan sobre el frontmatter del agente. esfuerzo: low | medium | high | xhigh | max (con motor claude; haiku lo ignora y el arquitecto no lo pasa; con codex manda motores.codex.razonamiento).",
     "cartografo": {
       "modelo": "sonnet",
       "motor": "claude",
@@ -128,13 +128,18 @@
     }
   },
   "costos": {
-    "_doc": "Tarifas nominales en USD por millón de tokens para /orquesta:costos (Show-Costos.ps1): entrada = tokens no cacheados, cache_escritura = cache_creation_input_tokens (1,25x la entrada con TTL de 5 min; 2x con TTL de 1 h), cache_lectura = cache_read_input_tokens, salida = output_tokens (incluye thinking). Familia = fable | opus | sonnet | haiku | codex, detectada del id del modelo; un modelo sin familia usa la de opus y el script lo avisa. Con suscripción es solo referencia: los tokens sí cuentan contra la cuota. Ajustá acá si tu plan tiene otro precio.",
+    "_doc": "Tarifas nominales en USD por millón de tokens para /orquesta:costos (Show-Costos.ps1): entrada = tokens no cacheados, cache_escritura = caché escrita con TTL de 5 min (1,25x la entrada), cache_escritura_1h = caché escrita con TTL de 1 h (2x la entrada; es la que usa Claude Code), cache_lectura = cache_read_input_tokens, salida = output_tokens (incluye thinking). El desglose 5 min / 1 h sale de usage.cache_creation; un transcript sin desglose se valora como 1 h. Búsqueda: primero la clave con el id exacto del modelo (por ejemplo 'claude-sonnet-4-6'), después la familia (fable | opus | sonnet | haiku | codex) detectada del id; un modelo sin ninguna de las dos usa la de opus y el script lo avisa. Las familias tienen el precio del modelo vigente de cada línea (Fable 5.1, Opus 5.5, Sonnet 5.5, Haiku 4.5); las versiones anteriores con otro precio van por id. Con suscripción es solo referencia: los tokens sí cuentan contra la cuota. Ajustá acá si tu plan tiene otro precio.",
     "tarifas": {
-      "fable":  { "entrada": 10,   "cache_escritura": 12.5, "cache_lectura": 0.25, "salida": 50 },
-      "opus":   { "entrada": 5,    "cache_escritura": 6.25, "cache_lectura": 0.5,  "salida": 25 },
-      "sonnet": { "entrada": 2,    "cache_escritura": 2.5,  "cache_lectura": 0.2,  "salida": 10 },
-      "haiku":  { "entrada": 1,    "cache_escritura": 1.25, "cache_lectura": 0.1,  "salida": 5 },
-      "codex":  { "entrada": 1.25, "cache_escritura": 0,    "cache_lectura": 0,    "salida": 10 }
+      "fable":             { "entrada": 10,   "cache_escritura": 12.5, "cache_escritura_1h": 20, "cache_lectura": 0.25, "salida": 50 },
+      "opus":              { "entrada": 4,    "cache_escritura": 5,    "cache_escritura_1h": 8,  "cache_lectura": 0.2,  "salida": 20 },
+      "sonnet":            { "entrada": 2,    "cache_escritura": 2.5,  "cache_escritura_1h": 4,  "cache_lectura": 0.2,  "salida": 10 },
+      "haiku":             { "entrada": 1,    "cache_escritura": 1.25, "cache_escritura_1h": 2,  "cache_lectura": 0.1,  "salida": 5 },
+      "codex":             { "entrada": 1.25, "cache_escritura": 0,    "cache_escritura_1h": 0,  "cache_lectura": 0,    "salida": 10 },
+      "claude-opus-5":     { "entrada": 5,    "cache_escritura": 6.25, "cache_escritura_1h": 10, "cache_lectura": 0.5,  "salida": 25 },
+      "claude-opus-4-8":   { "entrada": 5,    "cache_escritura": 6.25, "cache_escritura_1h": 10, "cache_lectura": 0.5,  "salida": 25 },
+      "claude-opus-4-7":   { "entrada": 5,    "cache_escritura": 6.25, "cache_escritura_1h": 10, "cache_lectura": 0.5,  "salida": 25 },
+      "claude-opus-4-6":   { "entrada": 5,    "cache_escritura": 6.25, "cache_escritura_1h": 10, "cache_lectura": 0.5,  "salida": 25 },
+      "claude-sonnet-4-6": { "entrada": 3,    "cache_escritura": 3.75, "cache_escritura_1h": 6,  "cache_lectura": 0.3,  "salida": 15 }
     }
   },
   "rutas": {

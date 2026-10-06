@@ -1,6 +1,6 @@
 ---
 name: arquitecto
-description: Protocolo "arquitecto" de orquesta. El modelo principal (Fable/Opus) clarifica, diseña, escribe el PLAN y un BRIEF por tarea, delega la implementación a trabajadores con el motor y el modelo configurados por tier (subagentes de Claude haiku/sonnet/opus o procesos de Codex CLI) y solo aprueba cada entrega tras un revisor independiente. Se invoca únicamente de forma explícita con /orquesta:arquitecto <objetivo> (o sin argumento para reanudar un PLAN abierto); nunca se activa solo, aunque el usuario hable de subagentes, delegar o "modo arquitecto".
+description: Protocolo "arquitecto" de orquesta. El modelo principal (Fable/Opus) clarifica, diseña, escribe el PLAN y un BRIEF por tarea, delega la implementación a trabajadores con el motor y el modelo configurados por tier (subagentes de Claude haiku/sonnet/opus/fable o procesos de Codex CLI) y solo aprueba cada entrega tras un revisor independiente. Se invoca únicamente de forma explícita con /orquesta:arquitecto <objetivo> (o sin argumento para reanudar un PLAN abierto); nunca se activa solo, aunque el usuario hable de subagentes, delegar o "modo arquitecto".
 argument-hint: [objetivo]
 allowed-tools: Bash(pwsh *), PowerShell(pwsh *)
 disable-model-invocation: true
@@ -24,7 +24,7 @@ Si el PLAN ya existe en `en-ejecucion` o `pausado`, estás **reanudando**: leé 
 
 **Cómo corrés los scripts.** Los `pwsh …` de abajo, con la tool PowerShell si está disponible; si no, con Bash. (En Windows, Bash → pwsh puede corromper los acentos de los argumentos, por ejemplo el objetivo del PLAN.)
 
-**Cómo pasás el modelo.** Cada llamada al Agent tool lleva `model:` con el valor de la tabla de arriba, que manda sobre el frontmatter del agente. El Agent tool solo acepta `haiku`, `sonnet`, `opus` y `fable`. Si la tabla dice `inherit`, omití `model:` (el subagente corre con el modelo de la sesión). Si dice un ID completo (`claude-sonnet-5`), pasá el alias que contiene (`sonnet`) y avisale al usuario, en una línea, que lo simplifique en `.claude/orquesta.json`.
+**Cómo pasás el modelo y el esfuerzo.** Cada llamada al Agent tool lleva `model:` y `effort:` con los valores de la columna Modelo y Esfuerzo de la tabla de arriba; este skill te lo pide explícitamente, y mandan sobre el frontmatter del agente. El Agent tool solo acepta `haiku`, `sonnet`, `opus` y `fable` como `model:`, y `low`, `medium`, `high`, `xhigh` y `max` como `effort:`. Si la tabla dice `inherit`, omití `model:` (el subagente corre con el modelo de la sesión). Si dice un ID completo (`claude-sonnet-5-5`), pasá el alias que contiene (`sonnet`) y avisale al usuario, en una línea, que lo simplifique en `.claude/orquesta.json`. Si el Esfuerzo es `—` (Haiku no tiene niveles de esfuerzo, o el rol no lo define), omití `effort:`. Un override de modelo en el chat no cambia el esfuerzo del rol, salvo que el usuario lo pida.
 
 ### Fase 1 — Cartografiar (barato, siempre)
 Delegá a `orquesta:cartografo` (model: el de la tabla) con el objetivo y pedile el mapa. Leé el mapa; no leas el repo vos salvo un archivo puntual que el mapa señale como decisivo. Si el grafo está desactualizado, pedile al usuario correr `graphify update .` o seguí con la advertencia anotada.

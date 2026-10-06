@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.4.3 — 2026-10-06
+Puesta al día con los modelos vigentes (Fable 5.1, Opus 5.5, Sonnet 5.5, Haiku 4.5). Los alias ya
+eran los correctos; lo desactualizado era la valoración de costos y el esfuerzo de los subagentes.
+- **Caché escrita según su TTL**: Claude Code escribe la caché con TTL de 1 h (2× la entrada), pero
+  `/orquesta:costos` la valoraba toda a 5 min (1,25×): la caché escrita salía un 37,5 % más barata de
+  lo real. `Read-ClaudeTranscriptUsage` lee `usage.cache_creation.ephemeral_5m/1h_input_tokens`
+  (sin desglose = 1 h) y las tarifas tienen `cache_escritura_1h`.
+- **Familia opus = Opus 5.5** (4 / 20, caché leída 0,20; antes 5 / 25 / 0,5, el precio de Opus 5).
+- **Tarifa por id de modelo**: `Get-TarifaModelo` busca primero la clave con el id exacto y después
+  la familia. Los defaults traen `claude-opus-5`, `claude-opus-4-8/4-7/4-6` (5 / 25) y
+  `claude-sonnet-4-6` (3 / 15), que antes se valoraban con el precio de la familia.
+- **`esfuerzo` pasa a tener efecto**: el arquitecto pasa `effort:` (low..max) en cada llamada al
+  Agent tool, junto con `model:`. Antes la clave era solo informativa y mandaba el frontmatter.
+  Con Haiku, que no tiene niveles de esfuerzo, `/orquesta:estado` muestra `— (haiku)` y el
+  arquitecto no lo pasa. Probado en Claude Code: Haiku con `effort` no falla, lo ignora.
+- IDs de ejemplo al día (`claude-sonnet-5-5`); la descripción del arquitecto incluye fable.
+- 9 aserciones nuevas (267).
+
 ## 1.4.2 — 2026-09-21
 El enrutamiento solo escalaba por dominio (`senior_si`) o por reintentos agotados; una tarea grande
 sin palabra de riesgo pagaba un ciclo completo de implementación + revisor en el tier base antes de

@@ -16,7 +16,7 @@ Presentale al usuario lo de arriba tal cual (es Markdown), y agregá debajo, en 
   ```json
   { "trabajadores": { "implementador": { "modelo": "opus" }, "revisor": { "modelo": "fable" } } }
   ```
-  Valores: `haiku`, `sonnet`, `opus`, `fable` o `inherit` (el modelo de la sesión). Los IDs completos (`claude-sonnet-5`) no los acepta el Agent tool: usá el alias. Los defaults completos están en `${CLAUDE_PLUGIN_ROOT}/config/orquesta.defaults.json`.
+  Valores: `haiku`, `sonnet`, `opus`, `fable` o `inherit` (el modelo de la sesión). Los IDs completos (`claude-sonnet-5-5`) no los acepta el Agent tool: usá el alias. Los defaults completos están en `${CLAUDE_PLUGIN_ROOT}/config/orquesta.defaults.json`.
 - **Cambiar el arquitecto**: es el modelo de la sesión: `claude --model fable` o `/model fable`. La config solo lo declara para avisar si no coincide.
 - **Compuertas**: `compuertas.*` en la misma config, o `ORQUESTA_GATES=0` en el entorno para apagarlas en una sesión. `estado: pausado` en el PLAN las relaja temporalmente.
 - Si hay PLAN `en-ejecucion` con tareas abiertas, sugerí `/orquesta:arquitecto` para reanudar; si está `cerrado`, recordá archivarlo antes de un plan nuevo.

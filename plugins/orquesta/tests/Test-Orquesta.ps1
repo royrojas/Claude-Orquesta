@@ -114,6 +114,9 @@ Assert ($skArq -match 'rutas resueltas y literales' -and $skArq -match 'nunca le
 Assert ($skArq -match 'Marcar-Tarea\.ps1' -and $skArq -match 'Economía de contexto' -and $skArq -match 'No invoqués otras skills' -and $skArq -match '/model') "arquitecto: economía de contexto (registro con Marcar-Tarea, sin skills ajenas, sin /model a mitad)"
 Assert ($skArq -match 'Show-Costos\.ps1' -and $skArq -match 'modo RETRO' -and $skArq -match 'segunda pasada dirigida') "arquitecto: cierra con costos medidos, delega la retro al documentador y pide contratos al cartógrafo en vez de recon propio"
 Assert ($skArq -match 'umbral_archivos_tocados' -and $skArq -match 'max_escalados_por_ciclo') "arquitecto: elige tier también por alcance (archivos/líneas) y respeta el tope de escalados por PLAN"
+Assert ($skArq -match '`model:` y `effort:`' -and $skArq -match '`xhigh`' -and $skArq -match 'omití `effort:`') "arquitecto: pasa effort de la tabla en cada llamada (low..max) y lo omite con '—' (haiku)"
+$docsModelos = @('skills/arquitecto/SKILL.md', 'skills/estado/SKILL.md', 'README.md', '../../README.md') | ForEach-Object { Get-Content (Join-Path $Root $_) -Raw -Encoding UTF8 }
+Assert (-not ($docsModelos -match 'claude-sonnet-5`')) "skills y manuales usan IDs vigentes en los ejemplos (claude-sonnet-5-5, no claude-sonnet-5)"
 $refEnrutamiento = Get-Content (Join-Path $Root 'skills/arquitecto/referencias/enrutamiento.md') -Raw -Encoding UTF8
 Assert ($refEnrutamiento -match 'umbral_archivos_tocados' -and $refEnrutamiento -match 'umbral_lineas_estimadas') "enrutamiento.md: dispara escalado también por alcance (archivos/líneas), no solo por dominio"
 Assert ($refEnrutamiento -match 'max_escalados_por_ciclo' -and $refEnrutamiento -match 'requiere_motivo_escalado') "enrutamiento.md: documenta el tope de escalados por PLAN y la exigencia de motivo"
@@ -372,6 +375,7 @@ Write-Host "`n== 17. Trabajador extra en la config del proyecto (StrictMode) =="
 Set-Content (Join-Path $tmp '.claude/orquesta.json') '{ "trabajadores": { "qa": { "modelo": "haiku" } } }'
 $ex = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Show-Estado.ps1') -Cwd $tmp 2>&1 | Out-String
 Assert ($LASTEXITCODE -eq 0 -and $ex -match 'orquesta:qa \| claude \| haiku \|' -and $ex -notmatch 'cannot be found') "Show-Estado tolera un trabajador sin esfuerzo/rol"
+Assert ($ex -match 'orquesta:qa \| claude \| haiku \| — \(haiku\) \|' -and $ex -match 'orquesta:revisor \| claude \| opus \| high \|') "Show-Estado: Esfuerzo '— (haiku)' con haiku (el arquitecto no pasa effort) y el nivel del rol en los demás"
 $ex = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Initialize-Orquesta.ps1') -Objetivo 'qa' -Cwd $tmp -Force 2>&1 | Out-String
 Assert ($LASTEXITCODE -eq 0 -and (Get-Content $planPath -Raw) -match 'orquesta:qa \| claude \| haiku \|') "Initialize-Orquesta incluye al trabajador extra en la tabla del PLAN"
 $ex = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Doctor-Orquesta.ps1') -Cwd $tmp 2>&1 | Out-String
@@ -480,9 +484,11 @@ function Linea([string]$id, [string]$model, [int]$in, [int]$cc, [int]$cr, [int]$
 $co = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Show-Costos.ps1') -Cwd $tmpCo -ClaudeDir $claudeDir 2>&1 | Out-String
 Assert ($co -match 'Costos de la orquestaci' -and $co -match 'Sesión\(es\) \(bitácora\): `ses-1`') "toma la sesión de la bitácora e imprime la tabla"
 Assert ($co -match '\| arquitecto \(sesión\) \| claude-fable-5-1 \| 2 \|') "deduplica las líneas de un mismo request (3 líneas = 1 request): 2 requests de fable, no 4"
-# fable: caché escrita (20k+400k)·12,5 + caché leída 120k·0,25 + salida (2000+1000)·50 = 5,25 + 0,03 + 0,15 = 5,43 USD
-Assert ($co -match '\| arquitecto \(sesión\) \| claude-fable-5-1 \| 2 \| 400k \| 0 \| 420k \| 120k \| 3k \| 5\.43 \|') "valora a costos.tarifas, con el máximo de salida por request y el contexto máximo"
+# fable, sin desglose de TTL → caché a 1 h: escrita (20k+400k)·20 + leída 120k·0,25 + salida (2000+1000)·50 = 8,40 + 0,03 + 0,15 = 8,58 USD
+Assert ($co -match '\| arquitecto \(sesión\) \| claude-fable-5-1 \| 2 \| 400k \| 0 \| 420k \| 120k \| 3k \| 8\.58 \|') "valora a costos.tarifas (caché sin desglose = 1 h), con el máximo de salida por request y el contexto máximo"
 Assert ($co -match '\| revisor x1 \| claude-opus-5 \| 1 \|') "el subagente se nombra por el rol que la bitácora asoció a su agent_id"
+# claude-opus-5 tiene tarifa propia (5/25), no la de la familia opus (Opus 5.5: 4/20): 50k·10 + 1M·0,5 + 10k·25 = 0,50 + 0,50 + 0,25 = 1,25
+Assert ($co -match '\| revisor x1 \| claude-opus-5 \| 1 \| [^|]+\| [^|]+\| [^|]+\| [^|]+\| [^|]+\| 1\.25 \|') "un id con tarifa propia (claude-opus-5) se valora con ella, no con la de su familia"
 Assert ($co -match '\| implementador x1 \(codex\) \| gpt-5\.6-sol \| 1 \| — \| 2\.0M \|') "las corridas de Codex salen de la bitácora con su modelo (formato invariante: 2.0M, no 2,0M)"
 Assert ($co -match 'Arranques en frío:\*\* 1 request') "detecta el request que re-escribió ≥ 100k de caché (arranque en frío)"
 Assert ($co -match '\*\*Total\*\* \|[^\n]*\|\s*\r?\n\s*\r?\nArquitecto:') "hay una línea vacía tras la tabla"
@@ -492,6 +498,22 @@ $coVacio = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Show-Co
 Assert ($LASTEXITCODE -eq 0 -and $coVacio -match 'No encontré sesiones') "sin bitácora ni transcripts: mensaje claro, sin error"
 $defs = Get-Content (Join-Path $Root 'config/orquesta.defaults.json') -Raw -Encoding UTF8 | ConvertFrom-Json
 Assert ($defs.trabajadores.cartografo.modelo -eq 'sonnet' -and $defs.costos.tarifas.fable.cache_lectura -eq 0.25) "defaults: cartógrafo en sonnet y tarifas de costos presentes"
+$tOpus = $defs.costos.tarifas.opus
+Assert ($tOpus.entrada -eq 4 -and $tOpus.salida -eq 20 -and $tOpus.cache_lectura -eq 0.2 -and $tOpus.cache_escritura -eq 5) "defaults: la familia opus vale como Opus 5.5 (4 / 20, caché leída 0,20)"
+$malas1h = @(foreach ($p in $defs.costos.tarifas.PSObject.Properties) { if ($p.Name -ne 'codex' -and ($p.Value.cache_escritura_1h -ne 2 * $p.Value.entrada -or $p.Value.cache_escritura -ne 1.25 * $p.Value.entrada)) { $p.Name } })
+Assert ($malas1h.Count -eq 0) "defaults: toda tarifa de Claude tiene caché escrita 5 min = 1,25x y 1 h = 2x la entrada (mal: $($malas1h -join ', '))"
+# Desglose real de Claude Code: usage.cache_creation con ephemeral_5m / ephemeral_1h
+$tmpTtl = Join-Path $tmpCo 'ttl.jsonl'
+@(
+    (@{ type = 'assistant'; message = @{ id = 't1'; model = 'claude-opus-5-5'; usage = @{ input_tokens = 0; cache_creation_input_tokens = 300000; cache_read_input_tokens = 0; output_tokens = 0; cache_creation = @{ ephemeral_5m_input_tokens = 100000; ephemeral_1h_input_tokens = 200000 } } } } | ConvertTo-Json -Compress -Depth 6)
+) | Set-Content $tmpTtl -Encoding UTF8
+$ttl = & $pwsh -NoProfile -NonInteractive -Command ". '$Scripts/OrquestaCommon.ps1'; `$c = Get-OrquestaConfig -Cwd '$tmpCo'; `$r = @(Read-ClaudeTranscriptUsage -Path '$tmpTtl')[0]; `$f = Get-TarifaModelo -Config `$c -Modelo `$r.model; [pscustomobject]@{ cc5m = `$r.cc5m; cc1h = `$r.cc1h; fam = `$f; usd = (Get-CostoTokens -Config `$c -Familia `$f -Cc5m `$r.cc5m -Cc1h `$r.cc1h) } | ConvertTo-Json -Compress" | ConvertFrom-Json
+# opus 5.5: 100k·5 + 200k·8 = 0,50 + 1,60 = 2,10
+Assert ($ttl.cc5m -eq 100000 -and $ttl.cc1h -eq 200000 -and $ttl.fam -eq 'opus' -and $ttl.usd -eq 2.1) "lee el desglose 5 min / 1 h de usage.cache_creation y valora cada parte con su tarifa"
+$tar = & $pwsh -NoProfile -NonInteractive -Command ". '$Scripts/OrquestaCommon.ps1'; `$c = Get-OrquestaConfig -Cwd '$tmpCo'; @('claude-sonnet-4-6', 'claude-sonnet-5-5', 'claude-opus-5-5[1m]', 'claude-haiku-4-5-20251001', 'modelo-raro') | ForEach-Object { Get-TarifaModelo -Config `$c -Modelo `$_ }"
+Assert ((@($tar) -join ',') -eq 'claude-sonnet-4-6,sonnet,opus,haiku,') "Get-TarifaModelo: id con tarifa propia → id; si no, familia (ignora el sufijo [1m]); desconocido → ''"
+$sin1h = & $pwsh -NoProfile -NonInteractive -Command ". '$Scripts/OrquestaCommon.ps1'; Get-CostoTokens -Config ([pscustomobject]@{ costos = [pscustomobject]@{ tarifas = [pscustomobject]@{ opus = [pscustomobject]@{ entrada = 3; cache_escritura = 3.75 } } } }) -Familia 'opus' -Cc1h 1000000"
+Assert ([double]"$sin1h" -eq 6) "una tarifa propia sin cache_escritura_1h usa 2x la entrada para la caché de 1 h"
 Remove-Item $tmpCo -Recurse -Force -ErrorAction SilentlyContinue
 
 Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue

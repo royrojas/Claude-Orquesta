@@ -326,9 +326,9 @@ En la práctica alcanza con el archivo del proyecto: el global es opcional y no 
 | Clave | Default | Qué controla |
 |---|---|---|
 | `orquestador.modelo` | `fable` | Modelo esperado para la sesión del arquitecto. Solo declara la expectativa: el modelo real lo fijás con `claude --model` o `/model`, y el aviso de "no coincide" lo da el arquitecto por autoconocimiento (best-effort; ningún script puede leer el modelo de la sesión). |
-| `trabajadores.<rol>.modelo` | ver §7 | Con motor claude: `haiku`, `sonnet`, `opus`, `fable` (alias del Agent tool) o `inherit` (el modelo de la sesión, es decir el del arquitecto). Los IDs completos (`claude-sonnet-5`) no los acepta el Agent tool: usá alias (si ponés uno, el arquitecto lo reduce al alias que contiene y te avisa). Con motor codex: un modelo de Codex (`gpt-5.x`); vacío o alias de Claude → cae a `motores.codex.modelo`. |
+| `trabajadores.<rol>.modelo` | ver §7 | Con motor claude: `haiku`, `sonnet`, `opus`, `fable` (alias del Agent tool) o `inherit` (el modelo de la sesión, es decir el del arquitecto). Los IDs completos (`claude-sonnet-5-5`) no los acepta el Agent tool: usá alias (si ponés uno, el arquitecto lo reduce al alias que contiene y te avisa). Con motor codex: un modelo de Codex (`gpt-5.x`); vacío o alias de Claude → cae a `motores.codex.modelo`. |
 | `trabajadores.<rol>.motor` | `claude` | `claude` (subagente) o `codex` (proceso `codex exec`). |
-| `trabajadores.<rol>.esfuerzo` | según rol | Documentativo; el esfuerzo real está en el frontmatter del agente. |
+| `trabajadores.<rol>.esfuerzo` | según rol | Con motor claude: `low` / `medium` / `high` / `xhigh` / `max`. El arquitecto lo pasa como `effort:` en cada llamada (manda sobre el `effort:` del frontmatter del agente). Con `haiku` no se pasa: Haiku no tiene niveles de esfuerzo y `/orquesta:estado` lo muestra como `—`. Ojo: Opus 5.5 trae `medium` por defecto si nadie lo fija. Con motor codex no aplica (manda `motores.codex.razonamiento`). |
 | `motores.codex.comando` | `codex` | Ejecutable de Codex (o ruta a un `.ps1` para pruebas). |
 | `motores.codex.modelo` | `""` | Modelo de Codex por defecto para trabajadores en codex que no tengan uno. |
 | `motores.codex.razonamiento` | `high` | `low` / `medium` / `high` / `xhigh` → `-c model_reasoning_effort`. |
@@ -832,7 +832,10 @@ Un ADR por decisión que cambie contratos, datos, infraestructura o convenciones
 
 ### Costos medidos, no estimados
 
-Los tokens reales están en los transcripts de Claude Code: `~/.claude/projects/<proyecto>/<sesión>.jsonl` (la sesión del arquitecto) y `<sesión>/subagents/agent-<id>.jsonl` (uno por subagente). Cada respuesta del modelo trae `usage` con `input_tokens`, `cache_creation_input_tokens`, `cache_read_input_tokens` y `output_tokens`. `/orquesta:costos` (`Show-Costos.ps1`) los agrega por actor y modelo y los valora con `costos.tarifas`.
+Los tokens reales están en los transcripts de Claude Code: `~/.claude/projects/<proyecto>/<sesión>.jsonl` (la sesión del arquitecto) y `<sesión>/subagents/agent-<id>.jsonl` (uno por subagente). Cada respuesta del modelo trae `usage` con `input_tokens`, `cache_creation_input_tokens` (desglosado en `cache_creation.ephemeral_5m_input_tokens` / `ephemeral_1h_input_tokens`), `cache_read_input_tokens` y `output_tokens`. `/orquesta:costos` (`Show-Costos.ps1`) los agrega por actor y modelo y los valora con `costos.tarifas`:
+
+- **Caché escrita según su TTL.** Claude Code escribe la caché con TTL de 1 h, que cuesta 2× la entrada (`cache_escritura_1h`), no 1,25× (`cache_escritura`, la de 5 min). Si un transcript no trae el desglose, se valora como 1 h. Hasta 1.4.2 todo se valoraba a 5 min, así que la caché escrita salía un 37,5 % más barata de lo real.
+- **Tarifa por id de modelo, si no por familia.** Las familias (`fable`, `opus`, `sonnet`, `haiku`) tienen el precio del modelo vigente de cada línea (Fable 5.1, Opus 5.5, Sonnet 5.5, Haiku 4.5). Las versiones anteriores con otro precio (`claude-opus-5`, `claude-opus-4-x`, `claude-sonnet-4-6`) tienen su propia clave. Para agregar otra, poné una clave con el id exacto en `costos.tarifas`.
 
 Lo que enseñó la primera orquestación real medida (5 tareas, arquitecto Fable, 24 delegaciones):
 
@@ -845,7 +848,8 @@ Lo que enseñó la primera orquestación real medida (5 tareas, arquitecto Fable
 | Subagentes de Claude | $6 | $17,8 |
 
 - **El costo del arquitecto es requests × contexto + salida.** Cada tool call es un request que relee todo el contexto desde caché; 58 Edits de registro y 9 "¿cómo vamos?" con Bash costaron ~$8–10 solos. De ahí `Marcar-Tarea.ps1` (una llamada por dictamen) y las reglas de "Economía de contexto" del skill.
-- **Cambiar de modelo no ahorra**: con Opus la misma sesión habría costado casi lo mismo, porque su lectura de caché cuesta el doble que la de Fable. Bajar requests y contexto sí ahorra.
+- **Cambiar de modelo ahorra menos de lo que parece**: con Opus 5 la misma sesión habría costado casi lo mismo, porque su lectura de caché costaba el doble que la de Fable. Opus 5.5 es más barato en todo (lectura de caché 0,20 contra 0,25 de Fable), pero en una sesión así el grueso sigue siendo requests × contexto. Bajar requests y contexto es lo que ahorra.
+- *(Esas cifras se midieron con la caché escrita valorada a 5 min. Con la valoración a 1 h de 1.4.3, el costo real fue algo mayor.)*
 - **Reanudar una sesión larga para una tarea lateral es carísimo**: escribir la retro al día siguiente costó $10–14 (un request frío re-escribió 419k de caché, y un `/model` posterior lo repitió). Por eso retro, memoria y cierre van al documentador o a una sesión nueva.
 - **El recon propio fue el 38 % del costo** porque el mapa de Haiku no traía contratos. Por eso el cartógrafo pasó a Sonnet con un modo "contratos para un BRIEF".
 - **Una skill ajena que se disparó sola** metió 30k tokens al contexto del arquitecto y se releyó ~80 veces. Por eso el arquitecto no invoca otras skills durante la orquestación.
@@ -900,7 +904,7 @@ Dejalo en `en-ejecucion` con las tareas `[x]`; mañana `/orquesta:revisar final`
 | Claude Code pregunta "Command spawns a nested PowerShell process which cannot be validated" cuando el arquitecto corre un script del plugin | Regla de seguridad de Claude Code: la herramienta PowerShell lanzando `pwsh` es un shell anidado que no puede validar contra las reglas de permiso, aunque el skill lo tenga permitido | Es normal. Elegí "Yes, and don't ask again" una vez por script. Los comandos `/orquesta:*` que solo muestran algo (doctor, estado) no preguntan: corren vía el `!` del skill. Con `Marcar-Tarea.ps1` los argumentos cambian en cada llamada: aceptá con "always allow" la primera vez y las siguientes pasan por prefijo. |
 | El prompt de permiso muestra una ruta de `claude-orquesta` (el repo del plugin), no de mi proyecto | El marketplace es local (`source: directory`): Claude Code sirve el plugin desde su carpeta fuente, y `${CLAUDE_PLUGIN_ROOT}` apunta ahí | Es normal; no está tocando tu proyecto, es el plugin ejecutando su propio script. Con un marketplace de GitHub la ruta sería la caché de `~/.claude/plugins/`. |
 | `/orquesta:estado` o `/orquesta:doctor` dicen "(no existe aún)" de una carpeta de Obsidian que sí existe en tu vault | No configuraste `contexto.obsidian.vault_root`, así que `carpeta_decisiones`/`carpeta_handoffs` se resuelven contra el repo (el default), no contra tu vault | Poné `vault_root` en tu `~/.claude/orquesta.json` **personal** (nunca en el del proyecto) — ver [§13](#13-graphify-obsidian-y-la-documentación-que-deja). |
-| La delegación falla con un error de validación del parámetro `model` | Configuraste un ID completo (`claude-sonnet-5`) y el arquitecto lo pasó tal cual (plugin anterior a 1.3.1) | El Agent tool solo acepta `haiku`/`sonnet`/`opus`/`fable`. Desde 1.3.1 el arquitecto lo reduce al alias y omite `model:` con `inherit`; actualizá el plugin y, mejor, usá alias en la config. |
+| La delegación falla con un error de validación del parámetro `model` | Configuraste un ID completo (`claude-sonnet-5-5`) y el arquitecto lo pasó tal cual (plugin anterior a 1.3.1) | El Agent tool solo acepta `haiku`/`sonnet`/`opus`/`fable`. Desde 1.3.1 el arquitecto lo reduce al alias y omite `model:` con `inherit`; actualizá el plugin y, mejor, usá alias en la config. |
 | El badge del README sale gris | El workflow no corrió aún o el nombre del repo cambió | Mirá la pestaña Actions. |
 
 ## 17. Convivencia con el plugin oficial de OpenAI
@@ -929,7 +933,7 @@ Claude-Orquesta/
     ├── schemas/           reporte.schema.json · revision.schema.json
     ├── config/orquesta.defaults.json
     ├── ejemplos/          orquesta.json · orquesta-codex.json
-    ├── tests/             Test-Orquesta.ps1 (258 aserciones) · fake-codex.ps1
+    ├── tests/             Test-Orquesta.ps1 (267 aserciones) · fake-codex.ps1
     ├── README.md          ficha técnica del plugin
     └── CHANGELOG.md
 ```
@@ -952,6 +956,11 @@ Sin dependencias (ni Pester). Valida JSON de manifiestos y hooks, frontmatter de
 ## Changelog
 
 El detalle por versión vive en [`plugins/orquesta/CHANGELOG.md`](plugins/orquesta/CHANGELOG.md).
+
+### 2026-10-06 — 1.4.3: costos y esfuerzo al día con Fable 5.1, Opus 5.5 y Sonnet 5.5
+- `/orquesta:costos` valora la caché escrita con TTL de 1 h (la que usa Claude Code, 2× la entrada) en vez de 5 min. Antes salía un 37,5 % más barata de lo real.
+- La tarifa de la familia opus pasa a la de Opus 5.5 (4 / 20). Las versiones anteriores con otro precio tienen tarifa propia por id de modelo.
+- `trabajadores.<rol>.esfuerzo` ahora tiene efecto: el arquitecto lo pasa como `effort:` en cada delegación, salvo con Haiku.
 
 ### 2026-09-16 — 1.4.1: ningún skill de orquesta se activa solo
 - El arquitecto ya no arranca por su cuenta cuando hablás de subagentes, delegar o "modo arquitecto": solo corre con `/orquesta:arquitecto`. Los seis skills llevan `disable-model-invocation: true`.

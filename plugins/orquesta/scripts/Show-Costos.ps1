@@ -59,7 +59,7 @@ foreach ($s in $sesiones) {
             $aid = $f.BaseName -replace '^agent-', ''
             $rol = if ($roles.ContainsKey($aid)) { $roles[$aid] } else { 'subagente' }
             foreach ($r in @(Read-ClaudeTranscriptUsage -Path $f.FullName)) {
-                $subs += [pscustomobject]@{ rol = $rol; agent_id = $aid; ts = $r.ts; model = $r.model; in = $r.in; cc = $r.cc; cr = $r.cr; out = $r.out }
+                $subs += [pscustomobject]@{ rol = $rol; agent_id = $aid; ts = $r.ts; model = $r.model; in = $r.in; cc = $r.cc; cc5m = $r.cc5m; cc1h = $r.cc1h; cr = $r.cr; out = $r.out }
             }
         }
     }
@@ -72,13 +72,13 @@ function Suma($coll, [string]$prop) {
 }
 
 function New-Fila([string]$actor, [string]$modelo, $reqs) {
-    $fam = Get-FamiliaModelo -Modelo $modelo
-    $in = Suma $reqs 'in'; $cc = Suma $reqs 'cc'; $cr = Suma $reqs 'cr'; $out = Suma $reqs 'out'
+    $fam = Get-TarifaModelo -Config $cfg -Modelo $modelo
+    $in = Suma $reqs 'in'; $cc = Suma $reqs 'cc'; $cc5m = Suma $reqs 'cc5m'; $cc1h = Suma $reqs 'cc1h'; $cr = Suma $reqs 'cr'; $out = Suma $reqs 'out'
     $ctx = ($reqs | ForEach-Object { $_.in + $_.cc + $_.cr } | Measure-Object -Maximum).Maximum
     [pscustomobject]@{
         actor = $actor; modelo = $modelo; familia = $(if ($fam) { $fam } else { 'opus (asumida)' }); requests = @($reqs).Count
-        ctx_max = [int64]$ctx; entrada = [int64]$in; cache_escritura = [int64]$cc; cache_lectura = [int64]$cr; salida = [int64]$out
-        usd = Get-CostoTokens -Config $cfg -Familia $fam -In $in -Cc $cc -Cr $cr -Out $out
+        ctx_max = [int64]$ctx; entrada = [int64]$in; cache_escritura = [int64]$cc; cache_escritura_5m = [int64]$cc5m; cache_escritura_1h = [int64]$cc1h; cache_lectura = [int64]$cr; salida = [int64]$out
+        usd = Get-CostoTokens -Config $cfg -Familia $fam -In $in -Cc5m $cc5m -Cc1h $cc1h -Cr $cr -Out $out
     }
 }
 
@@ -107,7 +107,7 @@ foreach ($g in ($codexStops | Group-Object { "$(Get-Prop $_ 'agente')" })) {
 
 # ---- Señales accionables
 $frios = @($arq | Where-Object { $_.cc -ge 100000 })
-$usdFrios = 0.0; foreach ($f in $frios) { $usdFrios += Get-CostoTokens -Config $cfg -Familia (Get-FamiliaModelo $f.model) -Cc $f.cc }
+$usdFrios = 0.0; foreach ($f in $frios) { $usdFrios += Get-CostoTokens -Config $cfg -Familia (Get-TarifaModelo -Config $cfg -Modelo $f.model) -Cc5m $f.cc5m -Cc1h $f.cc1h }
 $total = [math]::Round([double](Suma $filas 'usd'), 2)
 $usdArq = [math]::Round([double](Suma @($filas | Where-Object { $_.actor -like 'arquitecto*' }) 'usd'), 2)
 $senales = [ordered]@{
@@ -156,5 +156,5 @@ if ($arq.Count) {
     if ($asumidas.Count -gt 0) { $out.Add("Modelos sin tarifa propia (se usó la de opus): " + (($asumidas | ForEach-Object { $_.modelo } | Select-Object -Unique) -join ', ') + ". Agregalos en ``costos.tarifas``.") }
 }
 if ($codexStops.Count -gt 0) { $out.Add("Codex: tokens según ``codex exec`` (entrada incluye caché) valorados con ``costos.tarifas.codex``, de referencia; con plan Team consume créditos, no dólares.") }
-$out.Add("Tarifas por millón en ``costos.tarifas`` de la config (defaults del plugin, editables por proyecto). Con suscripción es solo referencia; los tokens sí cuentan contra la cuota.")
+$out.Add("Tarifas por millón en ``costos.tarifas`` de la config (defaults del plugin, editables por proyecto): por id de modelo si tiene tarifa propia, si no por familia; caché escrita a TTL de 1 h (la de Claude Code) salvo que el transcript la marque de 5 min. Con suscripción es solo referencia; los tokens sí cuentan contra la cuota.")
 $out -join "`n"

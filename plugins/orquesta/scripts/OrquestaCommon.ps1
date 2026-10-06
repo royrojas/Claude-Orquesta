@@ -429,7 +429,8 @@ function Read-ClaudeTranscriptUsage {
     <#
       Lee un transcript de Claude Code (<sesión>.jsonl o <sesión>/subagents/agent-<id>.jsonl) y devuelve un request
       por respuesta del modelo: ts, model, in (input_tokens), cc (cache_creation_input_tokens),
-      cr (cache_read_input_tokens), out (output_tokens, incluye thinking).
+      cc5m/cc1h (su desglose por TTL desde usage.cache_creation; sin desglose, todo va a cc1h: Claude Code escribe
+      la caché con TTL de 1 h), cr (cache_read_input_tokens), out (output_tokens, incluye thinking).
       Una respuesta se guarda como varias líneas (una por bloque de contenido) que repiten `message.id` y `usage`:
       se deduplica por id tomando el máximo de cada campo. Sin esto los tokens se cuentan 2-4 veces.
     #>
@@ -447,16 +448,26 @@ function Read-ClaudeTranscriptUsage {
             $id = "$(Get-Prop $o 'message.id')"; if (-not $id) { $id = "$(Get-Prop $o 'requestId')" }; if (-not $id) { $id = "$(Get-Prop $o 'uuid')" }
             if (-not $byId.Contains($id)) {
                 $ts = try { [datetime]"$(Get-Prop $o 'timestamp')" } catch { Get-Date }
-                $byId[$id] = [pscustomobject]@{ ts = $ts; model = "$(Get-Prop $o 'message.model')"; in = 0L; cc = 0L; cr = 0L; out = 0L }
+                $byId[$id] = [pscustomobject]@{ ts = $ts; model = "$(Get-Prop $o 'message.model')"; in = 0L; cc = 0L; cc5m = 0L; cc1h = 0L; desglose = $false; cr = 0L; out = 0L }
             }
             $r = $byId[$id]
-            $r.in  = [math]::Max($r.in,  [int64]"$(if ($null -ne (Get-Prop $u 'input_tokens')) { Get-Prop $u 'input_tokens' } else { 0 })")
-            $r.cc  = [math]::Max($r.cc,  [int64]"$(if ($null -ne (Get-Prop $u 'cache_creation_input_tokens')) { Get-Prop $u 'cache_creation_input_tokens' } else { 0 })")
-            $r.cr  = [math]::Max($r.cr,  [int64]"$(if ($null -ne (Get-Prop $u 'cache_read_input_tokens')) { Get-Prop $u 'cache_read_input_tokens' } else { 0 })")
-            $r.out = [math]::Max($r.out, [int64]"$(if ($null -ne (Get-Prop $u 'output_tokens')) { Get-Prop $u 'output_tokens' } else { 0 })")
+            $n = { param($k) $x = Get-Prop $u $k; if ($null -ne $x) { [int64]"$x" } else { 0L } }
+            $r.in  = [math]::Max($r.in,  (& $n 'input_tokens'))
+            $r.cc  = [math]::Max($r.cc,  (& $n 'cache_creation_input_tokens'))
+            $r.cr  = [math]::Max($r.cr,  (& $n 'cache_read_input_tokens'))
+            $r.out = [math]::Max($r.out, (& $n 'output_tokens'))
+            if ($null -ne (Get-Prop $u 'cache_creation')) {
+                $r.desglose = $true
+                $r.cc5m = [math]::Max($r.cc5m, (& $n 'cache_creation.ephemeral_5m_input_tokens'))
+                $r.cc1h = [math]::Max($r.cc1h, (& $n 'cache_creation.ephemeral_1h_input_tokens'))
+            }
         }
     } finally { $reader.Close() }
-    return @($byId.Values)
+    foreach ($r in $byId.Values) {
+        # Sin desglose (transcript viejo o test): lo que no se clasificó como 5 min se valora como 1 h.
+        if (-not $r.desglose) { $r.cc1h = $r.cc } elseif ($r.cc5m + $r.cc1h -lt $r.cc) { $r.cc1h = $r.cc - $r.cc5m }
+    }
+    return @($byId.Values | Select-Object ts, model, in, cc, cc5m, cc1h, cr, out)
 }
 
 function Get-FamiliaModelo {
@@ -471,17 +482,34 @@ function Get-FamiliaModelo {
     return ''
 }
 
+function Get-TarifaModelo {
+    <#
+      Clave de costos.tarifas que valora a un modelo: el id exacto (sin sufijo [1m]) si tiene tarifa propia, si no
+      su familia, si no '' (el que llama usa opus y lo marca como asumido).
+    #>
+    param([Parameter(Mandatory)]$Config, [string]$Modelo)
+    $id = ("$Modelo" -replace '\[[^\]]*\]$', '').Trim().ToLowerInvariant()
+    $tarifas = Get-Prop $Config 'costos.tarifas'
+    if ($id -and $null -ne $tarifas -and $tarifas.PSObject.Properties.Name -contains $id) { return $id }
+    $fam = Get-FamiliaModelo -Modelo $id
+    if ($fam -and $null -ne $tarifas -and $tarifas.PSObject.Properties.Name -contains $fam) { return $fam }
+    return ''
+}
+
 function Get-CostoTokens {
     <#
-      USD nominal según costos.tarifas de la config (por millón): entrada, cache_escritura, cache_lectura, salida.
-      Familia desconocida → tarifa de opus (y el que llama lo marca como asumido).
+      USD nominal según costos.tarifas de la config (por millón): entrada, cache_escritura (TTL 5 min),
+      cache_escritura_1h, cache_lectura, salida. -Familia es la clave de tarifa (familia o id de modelo, ver
+      Get-TarifaModelo); vacía o desconocida → opus (y el que llama lo marca como asumido). -Cc es caché escrita sin
+      desglose: se valora como 1 h, que es lo que escribe Claude Code. Una tarifa sin cache_escritura_1h usa 2x la entrada.
     #>
-    param([Parameter(Mandatory)]$Config, [string]$Familia, [int64]$In = 0, [int64]$Cc = 0, [int64]$Cr = 0, [int64]$Out = 0)
+    param([Parameter(Mandatory)]$Config, [string]$Familia, [int64]$In = 0, [int64]$Cc = 0, [int64]$Cc5m = 0, [int64]$Cc1h = 0, [int64]$Cr = 0, [int64]$Out = 0)
     if (-not $Familia) { $Familia = 'opus' }
     $t = Get-Prop $Config "costos.tarifas.$Familia"
     if ($null -eq $t) { $t = Get-Prop $Config 'costos.tarifas.opus' }
     if ($null -eq $t) { return 0.0 }
     $v = { param($k) $x = Get-Prop $t $k; if ($null -eq $x) { 0.0 } else { [double]$x } }
-    $usd = $In * (& $v 'entrada') + $Cc * (& $v 'cache_escritura') + $Cr * (& $v 'cache_lectura') + $Out * (& $v 'salida')
+    $tc1h = if ($null -ne (Get-Prop $t 'cache_escritura_1h')) { & $v 'cache_escritura_1h' } else { 2 * (& $v 'entrada') }
+    $usd = $In * (& $v 'entrada') + $Cc5m * (& $v 'cache_escritura') + ($Cc1h + $Cc) * $tc1h + $Cr * (& $v 'cache_lectura') + $Out * (& $v 'salida')
     return [math]::Round($usd / 1e6, 2)
 }
