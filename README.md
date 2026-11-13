@@ -7,6 +7,7 @@
 ```
 /plugin marketplace add royrojas/Claude-Orquesta
 /plugin install orquesta@orquesta
+! claude plugin enable orquesta@orquesta --scope local   ← en cada proyecto que lo use (instala apagado)
 /reload-plugins
 /orquesta:init          ← en cada proyecto, la primera vez: crea la config y te pregunta los modelos
 /orquesta:doctor        ← siempre después de init: valida lo que quedó
@@ -145,11 +146,25 @@ Dentro de Claude Code:
 ```
 /plugin marketplace add royrojas/Claude-Orquesta
 /plugin install orquesta@orquesta
-/reload-plugins
-/orquesta:doctor
 ```
 
-`/orquesta:doctor` te dice si `pwsh` está, si los hooks cargaron, qué motores tenés configurados y qué falta. Corré siempre esto después de instalar. Y en cada proyecto, el orden es fijo: **`/orquesta:init` → `/orquesta:doctor`** — init crea la config (es idempotente: si ya existe no la toca), doctor valida lo que quedó. Al revés te confunde: doctor te reporta una config que init está a punto de cambiar.
+`/orquesta:doctor` te dice si `pwsh` está, si los hooks cargaron, qué motores tenés configurados y qué falta. Corré siempre esto después de habilitarlo en un proyecto. Y en cada proyecto, el orden es fijo: **habilitar → `/orquesta:init` → `/orquesta:doctor`** — init crea la config (es idempotente: si ya existe no la toca), doctor valida lo que quedó. Al revés te confunde: doctor te reporta una config que init está a punto de cambiar.
+
+### Activarlo solo en los proyectos que lo usan
+
+orquesta se instala **apagado** (`defaultEnabled: false` desde 1.4.4): sus hooks, agentes y skills no se cargan en ningún proyecto hasta que lo habilitás ahí. Así un proyecto que no usa el protocolo no ve los agentes `orquesta:*` ni pasa por las compuertas.
+
+```
+# una vez, si lo instalaste antes de 1.4.4 (quedó prendido en todos lados):
+claude plugin disable orquesta@orquesta --scope user
+
+# en cada proyecto que lo use, desde su carpeta:
+claude plugin enable orquesta@orquesta --scope local
+```
+
+`--scope local` lo escribe en `.claude/settings.local.json` (personal, no se versiona); `--scope project` lo escribe en `.claude/settings.json` y lo prende para todo el equipo. La carpeta tiene que estar marcada como confiable en Claude Code. Comprobalo con `claude plugin list` o `/status`. Desde Claude Code: `! claude plugin enable orquesta@orquesta --scope local` y después `/reload-plugins`.
+
+Aun habilitado, orquesta no hace nada hasta que corrés `/orquesta:arquitecto`: sin `.orquesta/PLAN.md` las compuertas no intervienen y los agentes `orquesta:*` dicen en su descripción que solo se usan dentro de una orquestación.
 
 ### Instalar desde una carpeta local (para desarrollar el plugin)
 
@@ -344,7 +359,7 @@ En la práctica alcanza con el archivo del proyecto: el global es opcional y no 
 | `enrutamiento.requiere_motivo_escalado` | `true` | Cada escalado deja anotado en `## Bitácora de revisión` qué disparador lo activó (dominio/alcance/reintentos). |
 | `limites.max_paralelo` | `3` | Trabajadores en paralelo. Más no acelera: te satura de reportes. |
 | `limites.max_lineas_reporte` | `40` | Tope de un REPORTE; lo largo va a `.orquesta/reportes/`. |
-| `limites.compuerta_delegacion_chars` | `1200` | Cualquier delegación con prompt ≥ esto exige PLAN aunque no sea a un trabajador de orquesta. |
+| `limites.compuerta_delegacion_chars` | `1200` | Con un PLAN existente, cualquier delegación con prompt ≥ esto pasa por la compuerta aunque no sea a un trabajador de orquesta. Sin PLAN no aplica. |
 | `contexto.graphify.usar` / `salida` / `actualizar_al_cerrar` | `true` / `graphify-out` / `true` | Dónde está el grafo y si se refresca al cerrar. |
 | `contexto.obsidian.usar` | `true` | `false` apaga ADR/HANDOFF por completo: el arquitecto no delega al documentador, `/orquesta:estado`/`/orquesta:doctor` muestran "desactivado". |
 | `contexto.obsidian.vault_root` | `""` | Ruta absoluta a tu vault. Va en `~/.claude/orquesta.json` (**personal**, nunca en el del proyecto). Ver [§13](#13-graphify-obsidian-y-la-documentación-que-deja). |
@@ -739,7 +754,7 @@ Cuando el trabajador o el revisor corren en Codex, el JSON estructurado se rende
 | Compuerta | Evento | Dispara cuando | Cómo se destraba |
 |---|---|---|---|
 | **Aviso de sesión** | `SessionStart` | Abrís, reanudás o compactás una sesión en un proyecto con PLAN abierto. | No bloquea: le recuerda a Claude el estado y las tareas abiertas, y a vos te muestra una línea. |
-| **Delegación** | `PreToolUse(Agent)` | Se delega a `implementador*`/`documentador` (o cualquier prompt ≥ 1200 chars) sin PLAN, con PLAN `planificando`/`cerrado`, con BRIEF inexistente, o con BRIEF que no pasa la validación de forma. Un brief inline se acepta solo con criterios numerados. | PLAN `en-ejecucion` + BRIEF válido. `cartografo`, `revisor`, `auditor`, `Explore`, `Plan` y `fork` nunca se gobiernan. `Invoke-Codex.ps1` aplica la misma regla. |
+| **Delegación** | `PreToolUse(Agent)` | Se delega a `implementador*`/`documentador` sin PLAN (sin PLAN, nada más se frena), con PLAN `planificando`/`cerrado` (ahí también cualquier prompt ≥ 1200 chars), con BRIEF inexistente, o con BRIEF que no pasa la validación de forma. Un brief inline se acepta solo con criterios numerados. | PLAN `en-ejecucion` + BRIEF válido. `cartografo`, `revisor`, `auditor`, `Explore`, `Plan` y `fork` nunca se gobiernan. `Invoke-Codex.ps1` aplica la misma regla. |
 | **El arquitecto no edita** | `PreToolUse(Edit\|Write)` | PLAN `en-ejecucion` y el hilo principal (no un subagente) escribe fuera de `.orquesta/`, `.claude/`, `docs/`, carpetas de Obsidian o `*.md`. | Delegar, o `estado: pausado` para un ajuste trivial autorizado. |
 | **Cierre** | `Stop` | PLAN `en-ejecucion` con tareas `[ ]` al terminar el turno. **Una vez por sesión.** | Seguir, diferir `[~]` con tu OK, o `estado: pausado` si el arquitecto espera tu respuesta. |
 | **Bitácora** | `SubagentStop` | Siempre: registra tipo, tamaño y estado del reporte. Si pasa 1.5× el límite, le pide al trabajador resumir. | — |
@@ -763,6 +778,7 @@ cambio a orquesta:implementador con un BRIEF. Si es un ajuste trivial y el usuar
 - Una compuerta: `"compuertas": { "arquitecto_no_edita": false }` en la config.
 - Toda la sesión: variable de entorno `ORQUESTA_GATES=0` antes de abrir Claude Code.
 - Momentáneamente: `estado: pausado` en el PLAN.
+- En un proyecto que no usa orquesta no hace falta nada: sin `.orquesta/PLAN.md` ninguna compuerta interviene (solo se frena a `orquesta:implementador`/`implementador-senior`/`documentador` si el modelo los eligiera por su cuenta). Mejor todavía: no habilites el plugin ahí (§3).
 
 Las compuertas verifican **forma**, no fidelidad: que exista un BRIEF con criterios, no que los criterios sean buenos. Eso lo cubre el revisor. Sin `pwsh` en el PATH, Claude Code muestra un aviso no bloqueante y el protocolo sigue solo por instrucciones.
 
@@ -933,7 +949,7 @@ Claude-Orquesta/
     ├── schemas/           reporte.schema.json · revision.schema.json
     ├── config/orquesta.defaults.json
     ├── ejemplos/          orquesta.json · orquesta-codex.json
-    ├── tests/             Test-Orquesta.ps1 (267 aserciones) · fake-codex.ps1
+    ├── tests/             Test-Orquesta.ps1 (277 aserciones) · fake-codex.ps1
     ├── README.md          ficha técnica del plugin
     └── CHANGELOG.md
 ```
@@ -956,6 +972,11 @@ Sin dependencias (ni Pester). Valida JSON de manifiestos y hooks, frontmatter de
 ## Changelog
 
 El detalle por versión vive en [`plugins/orquesta/CHANGELOG.md`](plugins/orquesta/CHANGELOG.md).
+
+### 2026-11-13 — 1.4.4: orquesta solo actúa donde vos lo prendés
+- La compuerta de delegación ya no bloquea subagentes ajenos en proyectos sin PLAN. Antes, cualquier delegación de 1200 caracteres o más se bloqueaba con instrucciones para arrancar el protocolo, y el modelo terminaba creando un PLAN que nadie pidió.
+- El plugin se instala apagado y se habilita por proyecto (`claude plugin enable orquesta@orquesta --scope local`). Ver §3.
+- Los seis agentes dicen en su descripción que solo se usan dentro de una orquestación iniciada con `/orquesta:arquitecto`.
 
 ### 2026-10-06 — 1.4.3: costos y esfuerzo al día con Fable 5.1, Opus 5.5 y Sonnet 5.5
 - `/orquesta:costos` valora la caché escrita con TTL de 1 h (la que usa Claude Code, 2× la entrada) en vez de 5 min. Antes salía un 37,5 % más barata de lo real.

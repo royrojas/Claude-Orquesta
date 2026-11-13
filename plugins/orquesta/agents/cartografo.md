@@ -1,6 +1,6 @@
 ---
 name: cartografo
-description: Reconocimiento de solo lectura para el arquitecto. Mapea el repo con graphify (GRAPH_REPORT.md, graph.json, graphify query), las decisiones previas en Obsidian y el código, y devuelve un mapa breve de archivos, contratos, convenciones, riesgos y preguntas que el repo no responde. Usalo al inicio de cada orquestación y antes de escribir un BRIEF. No escribe nada.
+description: Solo dentro de una orquestación que el usuario inició con /orquesta:arquitecto (existe .orquesta/PLAN.md); fuera de ella no lo elijas por tu cuenta. Reconocimiento de solo lectura para el arquitecto. Mapea el repo con graphify (GRAPH_REPORT.md, graph.json, graphify query), las decisiones previas en Obsidian y el código, y devuelve un mapa breve de archivos, contratos, convenciones, riesgos y preguntas que el repo no responde. Usalo al inicio de cada orquestación y antes de escribir un BRIEF. No escribe nada.
 tools: Read, Glob, Grep, Bash, PowerShell
 disallowedTools: Edit, Write, NotebookEdit, Agent
 model: sonnet

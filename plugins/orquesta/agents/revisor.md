@@ -1,6 +1,6 @@
 ---
 name: revisor
-description: Verificación independiente con ojos frescos para el protocolo orquesta. Recibe un BRIEF y el REPORTE del trabajador, lee el diff real, corre build y tests, y dictamina APROBADO o RECHAZADO criterio por criterio con evidencia. Es el único que puede cerrar tareas y la verificación final "V." del PLAN. Solo lectura: nunca corrige el código.
+description: Solo dentro de una orquestación que el usuario inició con /orquesta:arquitecto (existe .orquesta/PLAN.md); fuera de ella no lo elijas por tu cuenta. Verificación independiente con ojos frescos para el protocolo orquesta. Recibe un BRIEF y el REPORTE del trabajador, lee el diff real, corre build y tests, y dictamina APROBADO o RECHAZADO criterio por criterio con evidencia. Es el único que puede cerrar tareas y la verificación final "V." del PLAN. Solo lectura: nunca corrige el código.
 tools: Read, Glob, Grep, Bash, PowerShell
 disallowedTools: Edit, Write, NotebookEdit, Agent
 model: opus

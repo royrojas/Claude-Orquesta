@@ -1,6 +1,6 @@
 ---
 name: auditor-seguridad
-description: Auditoría de seguridad de solo lectura para tareas del protocolo orquesta que tocan acceso a datos, SQL (SQL Server u Oracle), entrada de usuario, APIs, autenticación o secretos. Busca inyección (SQL, comando, LDAP, log, path traversal, SSRF), parametrización, menor privilegio, manejo de errores que filtre y secretos fuera de Key Vault. Dictamina APROBADO o RECHAZADO con archivo:línea. Complementa al revisor; no lo reemplaza.
+description: Solo dentro de una orquestación que el usuario inició con /orquesta:arquitecto (existe .orquesta/PLAN.md); fuera de ella no lo elijas por tu cuenta. Auditoría de seguridad de solo lectura para tareas del protocolo orquesta que tocan acceso a datos, SQL (SQL Server u Oracle), entrada de usuario, APIs, autenticación o secretos. Busca inyección (SQL, comando, LDAP, log, path traversal, SSRF), parametrización, menor privilegio, manejo de errores que filtre y secretos fuera de Key Vault. Dictamina APROBADO o RECHAZADO con archivo:línea. Complementa al revisor; no lo reemplaza.
 tools: Read, Glob, Grep, Bash, PowerShell
 disallowedTools: Edit, Write, NotebookEdit, Agent
 model: opus

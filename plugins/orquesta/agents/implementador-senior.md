@@ -1,6 +1,6 @@
 ---
 name: implementador-senior
-description: Implementa las tajadas difíciles de un BRIEF del protocolo orquesta - migraciones SQL Server/Oracle, capa de datos dual-engine, stored procedures, concurrencia y transacciones, Azure Functions, Key Vault/Managed Identity, refactors transversales, y tareas que el implementador estándar devolvió BLOQUEADO o que el revisor rechazó dos veces. Tier alto. No decide arquitectura ni habla con el usuario.
+description: Solo dentro de una orquestación que el usuario inició con /orquesta:arquitecto (existe .orquesta/PLAN.md); fuera de ella no lo elijas por tu cuenta. Implementa las tajadas difíciles de un BRIEF del protocolo orquesta - migraciones SQL Server/Oracle, capa de datos dual-engine, stored procedures, concurrencia y transacciones, Azure Functions, Key Vault/Managed Identity, refactors transversales, y tareas que el implementador estándar devolvió BLOQUEADO o que el revisor rechazó dos veces. Tier alto. No decide arquitectura ni habla con el usuario.
 tools: Read, Edit, Write, Glob, Grep, Bash, PowerShell
 disallowedTools: Agent
 model: opus

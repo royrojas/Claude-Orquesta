@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.4.4 — 2026-11-13
+orquesta se activaba en proyectos donde no se había pedido. Los skills no eran la causa
+(`disable-model-invocation` sigue vigente); lo eran la compuerta de delegación y los agentes
+visibles en todos los proyectos con el plugin instalado a nivel usuario.
+- **`Gate-Delegacion` inerte sin PLAN**: sin `.orquesta/PLAN.md`, cualquier delegación pasa
+  (antes un prompt ≥ `compuerta_delegacion_chars` a general-purpose, codex, web-fetch, etc. se
+  denegaba con los pasos para crear un PLAN, y el modelo los seguía). Solo se frena a los escritores
+  de orquesta (implementador, implementador-senior, documentador), con un mensaje que dice que
+  orquesta no está activa en vez de empujar al protocolo.
+- **`Log-Delegacion`**: el aviso de reporte largo solo corre con un PLAN abierto.
+- **Agentes**: la `description` de los seis empieza aclarando que solo se usan dentro de una
+  orquestación iniciada con `/orquesta:arquitecto` (Claude Code no tiene un campo de frontmatter
+  para impedir que el modelo elija un subagente).
+- **`defaultEnabled: false`** en `plugin.json`: se instala apagado y se habilita por proyecto con
+  `claude plugin enable orquesta@orquesta --scope local`. README §3, "Activarlo solo en los
+  proyectos que lo usan".
+- 10 aserciones nuevas (277).
+
 ## 1.4.3 — 2026-10-06
 Puesta al día con los modelos vigentes (Fable 5.1, Opus 5.5, Sonnet 5.5, Haiku 4.5). Los alias ya
 eran los correctos; lo desactualizado era la valoración de costos y el esfuerzo de los subagentes.

@@ -33,7 +33,7 @@ Para probar desde una carpeta local antes de publicar:
 /plugin install orquesta@orquesta
 ```
 
-Reiniciá Claude Code (o `/reload-plugins`). En cada proyecto, siempre en este orden: `/orquesta:init` (crea la config y te pregunta los modelos; si ya existe no la toca) → `/orquesta:doctor` (valida) → `/orquesta:estado` (enrutamiento con la fuente de cada valor).
+Se instala apagado (`defaultEnabled: false`): habilitalo en cada proyecto que lo use con `claude plugin enable orquesta@orquesta --scope local` (si lo instalaste antes de 1.4.4, apagalo antes a nivel usuario con `claude plugin disable orquesta@orquesta --scope user`). Reiniciá Claude Code (o `/reload-plugins`). En cada proyecto, siempre en este orden: `/orquesta:init` (crea la config y te pregunta los modelos; si ya existe no la toca) → `/orquesta:doctor` (valida) → `/orquesta:estado` (enrutamiento con la fuente de cada valor).
 
 > Podés copiar `plugins/orquesta/skills/*` a `~/.claude/skills/` y `agents/*` a `~/.claude/agents/`, pero así **perdés las compuertas** (los hooks de plugin no se copian) y `${CLAUDE_PLUGIN_ROOT}` no se sustituye. Instalalo como plugin.
 
@@ -122,7 +122,7 @@ Sandbox: `workspace-write` bloquea red; si tu `dotnet restore` necesita bajar pa
 | Compuerta | Evento | Dispara cuando | Se destraba |
 |---|---|---|---|
 | Aviso de sesión | `SessionStart` | Al abrir, reanudar o compactar una sesión en un proyecto con PLAN abierto (`en-ejecucion`, `pausado`, `planificando`). | No bloquea: le recuerda a Claude el estado y las tareas abiertas, y a vos te muestra una línea. |
-| Delegación | `PreToolUse(Agent)` | Se delega a `implementador*`/`documentador` (o cualquier prompt ≥ 1200 chars) sin PLAN, con PLAN en `planificando`/`cerrado`, o a un implementador cuyo BRIEF referenciado no existe o **no pasa la validación de forma** (≥ 2 criterios numerados concretos, comandos en `## Cómo verificar`, línea `NO tocar:`, sin marcadores de plantilla). Un brief inline se acepta solo con criterios numerados. | PLAN en `en-ejecucion` + BRIEF que pase `scripts/Test-Brief.ps1`. `cartografo`, `revisor`, `auditor`, `Explore`, `Plan` y `fork` nunca se gobiernan. |
+| Delegación | `PreToolUse(Agent)` | Se delega a `implementador*`/`documentador` sin PLAN (sin PLAN, nada más se frena), con PLAN en `planificando`/`cerrado` (ahí también cualquier prompt ≥ 1200 chars), o a un implementador cuyo BRIEF referenciado no existe o **no pasa la validación de forma** (≥ 2 criterios numerados concretos, comandos en `## Cómo verificar`, línea `NO tocar:`, sin marcadores de plantilla). Un brief inline se acepta solo con criterios numerados. | PLAN en `en-ejecucion` + BRIEF que pase `scripts/Test-Brief.ps1`. `cartografo`, `revisor`, `auditor`, `Explore`, `Plan` y `fork` nunca se gobiernan. |
 | El arquitecto no edita | `PreToolUse(Edit\|Write)` | PLAN `en-ejecucion` y el hilo principal (no un subagente) escribe fuera de `.orquesta/`, `.claude/`, `docs/`, carpetas de Obsidian o `*.md`. | Delegar, o `estado: pausado` para un ajuste trivial autorizado. |
 | Cierre | `Stop` | PLAN `en-ejecucion` con tareas `[ ]` al terminar el turno. **Una vez por sesión.** | Seguir, diferir `[~]`, o `estado: pausado` si esperás al usuario. |
 | Bitácora | `SubagentStop` | Siempre: registra tipo, id, tamaño y estado del reporte en `.orquesta/bitacora.jsonl`. Si el reporte pasa 1.5× el límite, le pide al trabajador resumir. | — |
@@ -177,7 +177,7 @@ plugins/orquesta/
 pwsh -NoProfile -File plugins/orquesta/tests/Test-Orquesta.ps1
 ```
 
-267 aserciones sin dependencias: JSON de manifiestos y hooks, frontmatter de agentes y skills, sintaxis de todos los scripts, merge de config, y cada compuerta alimentada con el JSON que Claude Code manda por stdin (deny/allow/block/nudge, `agent_id`, `stop_hook_active`, `ORQUESTA_GATES`), más el motor Codex contra un `codex` falso (compuertas, flags, REPORTE, thread_id, resume, tokens), la validación de forma de BRIEFs, el aviso de sesión, la salida estructurada (JSON → REPORTE/REVISIÓN) y el doctor.
+277 aserciones sin dependencias: JSON de manifiestos y hooks, frontmatter de agentes y skills, sintaxis de todos los scripts, merge de config, y cada compuerta alimentada con el JSON que Claude Code manda por stdin (deny/allow/block/nudge, `agent_id`, `stop_hook_active`, `ORQUESTA_GATES`), más el motor Codex contra un `codex` falso (compuertas, flags, REPORTE, thread_id, resume, tokens), la validación de forma de BRIEFs, el aviso de sesión, la salida estructurada (JSON → REPORTE/REVISIÓN) y el doctor.
 
 El repo trae un workflow de GitHub Actions (`.github/workflows/tests.yml`) que corre la misma suite en **windows-latest y ubuntu-latest** en cada push. Es la prueba en Windows que no se puede hacer desde Linux: rutas con `\`, shims `.cmd`, finales de línea.
 

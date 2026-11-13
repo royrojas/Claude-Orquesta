@@ -66,6 +66,8 @@ foreach ($f in @('.claude-plugin/plugin.json', 'hooks/hooks.json', 'config/orque
     $p = Join-Path $Root $f
     try { $null = Get-Content -LiteralPath $p -Raw | ConvertFrom-Json; Assert $true "$f parsea" } catch { Assert $false "$f parsea: $($_.Exception.Message)" }
 }
+$manifest = Get-Content (Join-Path $Root '.claude-plugin/plugin.json') -Raw | ConvertFrom-Json
+Assert ($manifest.defaultEnabled -eq $false) "plugin.json: defaultEnabled false (se habilita por proyecto)"
 $hooks = Get-Content (Join-Path $Root 'hooks/hooks.json') -Raw | ConvertFrom-Json
 foreach ($ev in $hooks.hooks.PSObject.Properties) {
     foreach ($grupo in $ev.Value) { foreach ($h in $grupo.hooks) {
@@ -91,6 +93,7 @@ foreach ($a in $agentes) {
     if ($null -eq $fm) { continue }
     Assert ($fm.ContainsKey('name') -and $fm.name -match '^[a-z][a-z0-9-]*$') "$($a.Name): name válido ($($fm.name))"
     Assert ($fm.ContainsKey('description') -and $fm.description.Length -gt 40) "$($a.Name): description presente"
+    Assert ($fm.description -match '/orquesta:arquitecto') "$($a.Name): description limita su uso a una orquestación iniciada con /orquesta:arquitecto"
     Assert ($fm.ContainsKey('model')) "$($a.Name): model declarado ($($fm.model))"
     Assert ($null -ne $defaults.trabajadores.PSObject.Properties[$fm.name]) "$($a.Name): tiene entrada en trabajadores de la config"
     $body = Get-Content $a.FullName -Raw
@@ -188,9 +191,13 @@ $r = Invoke-Hook 'Gate-Delegacion.ps1' (Spawn 'orquesta:implementador' 'sin brie
 Assert ($r -eq '') "ORQUESTA_GATES=0 apaga la compuerta"
 Remove-Item $planPath
 $r = Invoke-Hook 'Gate-Delegacion.ps1' (Spawn 'orquesta:implementador-senior' 'Implementá BRIEF-02')
-Assert ($r -match 'deny' -and $r -match 'Initialize-Orquesta') "sin PLAN → deny con instrucción de crear el plan"
+Assert ($r -match 'deny' -and $r -match 'no est. activa' -and $r -match '/orquesta:arquitecto') "sin PLAN → deny al escritor: orquesta no está activa, solo con /orquesta:arquitecto"
+$r = Invoke-Hook 'Gate-Delegacion.ps1' (Spawn 'orquesta:documentador' 'Documentá la decisión')
+Assert ($r -match 'deny' -and $r -match 'no est. activa') "sin PLAN → deny al documentador"
 $r = Invoke-Hook 'Gate-Delegacion.ps1' (Spawn 'general-purpose' ('x' * 2000))
-Assert ($r -match 'deny') "sin PLAN, prompt >= umbral a general-purpose → deny"
+Assert ($r -eq '') "sin PLAN, prompt >= umbral a general-purpose → allow (orquesta no está activa)"
+$r = Invoke-Hook 'Gate-Delegacion.ps1' (Spawn 'codex:codex-rescue' ('x' * 2000))
+Assert ($r -eq '') "sin PLAN, prompt largo a un agente de otro plugin → allow"
 $r = Invoke-Hook 'Gate-Delegacion.ps1' (Spawn 'general-purpose' 'corto')
 Assert ($r -eq '') "sin PLAN, prompt corto a general-purpose → allow"
 Assert (Test-Path (Join-Path $tmp '.orquesta/bitacora.jsonl')) "los spawns quedan en la bitácora"
@@ -260,6 +267,11 @@ $parcial = @{ session_id = 'test-1'; cwd = $tmp; hook_event_name = 'SubagentStop
 Assert ((Invoke-Hook 'Log-Delegacion.ps1' $parcial) -eq '') "reporte PARCIAL no dispara nudge (bajo el límite)"
 $bit = Get-Content (Join-Path $tmp '.orquesta/bitacora.jsonl') | ForEach-Object { $_ | ConvertFrom-Json }
 Assert (@($bit | Where-Object { $_.PSObject.Properties['estado'] -and $_.estado -eq 'PARCIAL' }).Count -ge 1) "detecta el estado PARCIAL del reporte (antes se perdía)"
+$sinPlan = Join-Path ([System.IO.Path]::GetTempPath()) "orquesta-sinplan-$([guid]::NewGuid().ToString('N').Substring(0,8))"
+New-Item -ItemType Directory -Path $sinPlan -Force | Out-Null
+$sub3 = $sub2.Clone(); $sub3.cwd = $sinPlan; $sub3.agent_type = 'orquesta:revisor'
+Assert ((Invoke-Hook 'Log-Delegacion.ps1' $sub3) -eq '') "sin PLAN, reporte largo → sin nudge (orquesta no está activa)"
+Remove-Item $sinPlan -Recurse -Force
 
 Write-Host "`n== 11. Show-Estado ==" -ForegroundColor Cyan
 $estado = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Show-Estado.ps1') -Cwd $tmp | Out-String

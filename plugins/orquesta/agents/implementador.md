@@ -1,6 +1,6 @@
 ---
 name: implementador
-description: Implementa exactamente una tarea descrita en un BRIEF de .orquesta/briefs (código .NET/C#, SQL, PowerShell, tests). Tier estándar del protocolo orquesta. Usalo cuando el arquitecto ya escribió el BRIEF con contrato y criterios de aceptación; no para explorar ni para decidir arquitectura.
+description: Solo dentro de una orquestación que el usuario inició con /orquesta:arquitecto (existe .orquesta/PLAN.md); fuera de ella no lo elijas por tu cuenta. Implementa exactamente una tarea descrita en un BRIEF de .orquesta/briefs (código .NET/C#, SQL, PowerShell, tests). Tier estándar del protocolo orquesta. Usalo cuando el arquitecto ya escribió el BRIEF con contrato y criterios de aceptación; no para explorar ni para decidir arquitectura.
 tools: Read, Edit, Write, Glob, Grep, Bash, PowerShell
 disallowedTools: Agent
 model: sonnet

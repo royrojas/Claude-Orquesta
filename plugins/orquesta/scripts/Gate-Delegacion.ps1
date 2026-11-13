@@ -4,9 +4,10 @@
   Además registra cada spawn en la bitácora (agente + modelo) para tener métricas de uso por modelo.
 
   Reglas (solo en el hilo principal; los spawns anidados dentro de subagentes no se tocan):
+    - Sin PLAN, orquesta no está activa en el proyecto: todo pasa, salvo los escritores de orquesta
+      (implementador, implementador-senior, documentador) -> deny neutro, que no empuja a arrancar el protocolo.
     - Exentos siempre: cartografo, revisor, auditor-seguridad, Explore, Plan, fork, general-purpose (salvo prompt largo).
-    - Escritores (implementador, implementador-senior, documentador) o cualquier prompt >= compuerta_delegacion_chars:
-        * sin PLAN                      -> deny
+    - Con PLAN, escritores o cualquier prompt >= compuerta_delegacion_chars:
         * PLAN en 'planificando'        -> deny (falta aprobación del usuario)
         * PLAN en 'cerrado'             -> deny (trabajo nuevo = plan nuevo)
         * PLAN en 'pausado'             -> allow (el usuario autorizó saltarse el protocolo)
@@ -49,9 +50,11 @@ $plan = Get-PlanInfo -Cwd $cwd -Config $cfg
 $planRel = Get-Prop $cfg 'rutas.plan'
 
 if (-not $plan.Existe) {
-    Deny-ToolUse ("orquesta: no existe $planRel. Protocolo: (1) cartógrafo, (2) clarificar con el usuario en UNA ronda, " +
-        "(3) crear el PLAN con pwsh -NoProfile -File <plugin>/scripts/Initialize-Orquesta.ps1 -Objetivo '...', " +
-        "(4) presentarlo y, aprobado, poner 'estado: en-ejecucion', (5) un BRIEF por tarea en $(Get-Prop $cfg 'rutas.briefs'). Luego volvé a delegar.")
+    # Sin PLAN no hay orquestación: solo se frena a los escritores de orquesta, sin pedir que se arranque el protocolo.
+    if ($short -notin $escritores) { exit 0 }
+    Deny-ToolUse ("orquesta no está activa en este proyecto (no existe $planRel). No uses agentes orquesta:* por tu cuenta: " +
+        "trabajá directo o con general-purpose. Solo si el usuario corrió /orquesta:arquitecto en esta sesión, " +
+        "seguí ese skill: crear el PLAN con Initialize-Orquesta.ps1, aprobarlo y escribir un BRIEF por tarea.")
 }
 switch ($plan.Estado) {
     'planificando' { Deny-ToolUse "orquesta: el PLAN está en 'estado: planificando'. Presentá el plan al usuario; cuando lo apruebe, cambiá a 'estado: en-ejecucion' en $planRel y volvé a delegar." }

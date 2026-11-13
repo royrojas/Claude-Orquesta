@@ -35,6 +35,9 @@ if (-not (Test-OrquestaGatesEnabled)) { exit 0 }
 $max = [int](Get-Prop $cfg 'limites.max_lineas_reporte')
 $trabajadores = @('implementador', 'implementador-senior', 'revisor', 'auditor-seguridad', 'documentador', 'cartografo')
 if ($short -in $trabajadores -and $max -gt 0 -and $lineas -gt ($max * 1.5)) {
+    # Fuera de una orquestación (sin PLAN o cerrado) no se le pide nada al trabajador.
+    $plan = Get-PlanInfo -Cwd $cwd -Config $cfg
+    if (-not $plan.Existe -or $plan.Estado -eq 'cerrado') { exit 0 }
     Add-ToolContext -Event 'SubagentStop' -Context ("orquesta: tu reporte tiene $lineas líneas; el límite es $max. " +
         "Guardá el detalle completo en $(Get-Prop $cfg 'rutas.reportes')/ y respondé solo con el resumen en formato REPORTE (estado, cambios, criterios ✓/✗ con evidencia, pruebas, dudas).")
 }

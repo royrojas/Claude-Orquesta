@@ -1,6 +1,6 @@
 ---
 name: documentador
-description: Cierra la documentación de una orquestación - escribe el ADR (decisiones) y el HANDOFF en las carpetas de Obsidian del proyecto usando las plantillas del plugin, con frontmatter y wikilinks, y refresca el grafo de graphify (graphify update .) si está configurado. Usalo solo al cerrar el PLAN o cuando el arquitecto pida documentar una decisión. No toca código fuente.
+description: Solo dentro de una orquestación que el usuario inició con /orquesta:arquitecto (existe .orquesta/PLAN.md); fuera de ella no lo elijas por tu cuenta. Cierra la documentación de una orquestación - escribe el ADR (decisiones) y el HANDOFF en las carpetas de Obsidian del proyecto usando las plantillas del plugin, con frontmatter y wikilinks, y refresca el grafo de graphify (graphify update .) si está configurado. Usalo solo al cerrar el PLAN o cuando el arquitecto pida documentar una decisión. No toca código fuente.
 tools: Read, Write, Edit, Glob, Grep, Bash, PowerShell
 disallowedTools: Agent
 model: sonnet
