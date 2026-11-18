@@ -295,13 +295,13 @@ Con suscripción los dólares son referencia, pero los tokens cuentan contra la 
 
 ### `/orquesta:doctor`
 
-Diagnóstico del entorno: versión de PowerShell y `pwsh` en PATH, hooks y scripts del plugin, config válida y motores de los trabajadores, Codex CLI (versión y login) si algún trabajador lo usa, plugin oficial de OpenAI, graphify, carpeta de Obsidian, git, PLAN. Con "Siguientes pasos" cuando algo falta. Si el proyecto no tiene `.claude/orquesta.json`, te sugiere `/orquesta:init` (no lo crea él: doctor es solo lectura). Si el `CLAUDE.md` del proyecto declara una carpeta de Obsidian absoluta distinta de la que resuelve la config, lo marca con ✗ y te manda a `/orquesta:init` — solo lo lee para diagnosticar, la config sigue mandando.
+Diagnóstico del entorno: versión de PowerShell y `pwsh` en PATH, hooks y scripts del plugin, config válida y motores de los trabajadores, Codex CLI (versión y login) si algún trabajador lo usa, plugin oficial de OpenAI, graphify, carpeta de Obsidian, git, PLAN. Con "Siguientes pasos" cuando algo falta. Si el proyecto no tiene `.claude/orquesta.json`, te sugiere `/orquesta:init` (no lo crea él: doctor es solo lectura). Si el `AGENTS.md` (o `CLAUDE.md`) del proyecto declara una carpeta de Obsidian absoluta distinta de la que resuelve la config, lo marca con ✗ y te manda a `/orquesta:init` — solo lo lee para diagnosticar, la config sigue mandando.
 
 ### `/orquesta:init`
 
-Crea `.claude/orquesta.json` en el proyecto si no existe: un esqueleto mínimo y editable con un `_doc` por bloque (`trabajadores`, `motores.codex`, `contexto.obsidian`). **No vuelca los defaults** — vacío de overrides se comporta igual que los defaults y sigue al día cuando el plugin cambia. Si el `CLAUDE.md` del proyecto tiene la sección "Memoria del proyecto (Obsidian)" con una línea `- Decisiones: <ruta absoluta>`, la pre-llena en `carpeta_decisiones` y `carpeta_handoffs` (si la ruta está abreviada o no es absoluta, no inventa nada). Nunca sobreescribe uno existente sin preguntar.
+Crea `.claude/orquesta.json` en el proyecto si no existe: un esqueleto mínimo y editable con un `_doc` por bloque (`trabajadores`, `motores.codex`, `contexto.obsidian`). **No vuelca los defaults** — vacío de overrides se comporta igual que los defaults y sigue al día cuando el plugin cambia. Si el `AGENTS.md` del proyecto (o el `CLAUDE.md`, en proyectos configurados antes) tiene la sección "Memoria del proyecto (Obsidian)" con una línea `- Decisiones: <ruta absoluta>`, la pre-llena en `carpeta_decisiones` y `carpeta_handoffs` (si la ruta está abreviada o no es absoluta, no inventa nada). Nunca sobreescribe uno existente sin preguntar.
 
-Después te pregunta, en una sola ronda, **quién implementa, quién toma las tareas difíciles y quién revisa/audita** (Claude Sonnet/Opus/Fable o Codex, con o sin modelo específico), **dónde van las notas de cierre** si el CLAUDE.md no lo dijo (dentro del repo — default, no hace falta Obsidian —, en una carpeta de tu vault, o ninguna) y, si elegiste Codex, el razonamiento. Funciona sin Obsidian, sin graphify y sin ningún otro skill: todo eso es opcional. Escribe **solo las claves que elegiste**: si para un rol te quedaste con el default, esa clave no se escribe y sigue al día con el plugin. Te avisa si implementador y revisor quedaron en el mismo modelo del mismo proveedor (perdés la mirada independiente), y cierra mostrando la tabla de `/orquesta:estado` para que veas qué quedó.
+Después te pregunta, en una sola ronda, **quién implementa, quién toma las tareas difíciles y quién revisa/audita** (Claude Sonnet/Opus/Fable o Codex, con o sin modelo específico), **dónde van las notas de cierre** si el AGENTS.md/CLAUDE.md no lo dijo (dentro del repo — default, no hace falta Obsidian —, en una carpeta de tu vault, o ninguna) y, si elegiste Codex, el razonamiento. Funciona sin Obsidian, sin graphify y sin ningún otro skill: todo eso es opcional. Escribe **solo las claves que elegiste**: si para un rol te quedaste con el default, esa clave no se escribe y sigue al día con el plugin. Te avisa si implementador y revisor quedaron en el mismo modelo del mismo proveedor (perdés la mirada independiente), y cierra mostrando la tabla de `/orquesta:estado` para que veas qué quedó.
 
 ```
 /orquesta:init          ← la primera vez que usás orquesta en un proyecto (si la config ya existe, no la toca)
@@ -334,7 +334,7 @@ La config se resuelve por **merge profundo** de tres archivos; solo escribís la
 2. `~/.claude/orquesta.json` — vos, para todos tus proyectos.
 3. `<proyecto>/.claude/orquesta.json` — este proyecto (se versiona con el repo, así el equipo comparte el enrutamiento).
 
-En la práctica alcanza con el archivo del proyecto: el global es opcional y no hace falta crearlo (sin él, los dos modelos son idénticos). Para crear el del proyecto sin escribirlo a mano, `/orquesta:init` deja un esqueleto mínimo, editable y pre-llenado desde tu `CLAUDE.md` (ver [§5](#orquestainit)). Si en algún momento no sabés de dónde sale un valor, `/orquesta:estado` lo dice archivo por archivo.
+En la práctica alcanza con el archivo del proyecto: el global es opcional y no hace falta crearlo (sin él, los dos modelos son idénticos). Para crear el del proyecto sin escribirlo a mano, `/orquesta:init` deja un esqueleto mínimo, editable y pre-llenado desde tu `AGENTS.md` o `CLAUDE.md` (ver [§5](#orquestainit)). Si en algún momento no sabés de dónde sale un valor, `/orquesta:estado` lo dice archivo por archivo.
 
 ### Todas las claves
 
@@ -792,7 +792,7 @@ Si existe `graphify-out/` (lo genera `/graphify .`), el cartógrafo lee `GRAPH_R
 
 Al cerrar un PLAN, el documentador escribe en las carpetas configuradas (por defecto `docs/decisiones` y `docs/handoffs`, dentro del repo).
 
-**Si tu vault está fuera del repo**, lo más simple es la **ruta absoluta** en `contexto.obsidian.carpeta_decisiones`/`carpeta_handoffs` del `.claude/orquesta.json` del proyecto — es lo que escribe `/orquesta:init` (la toma tal cual del CLAUDE.md). Funciona en tu máquina y no hace falta nada más.
+**Si tu vault está fuera del repo**, lo más simple es la **ruta absoluta** en `contexto.obsidian.carpeta_decisiones`/`carpeta_handoffs` del `.claude/orquesta.json` del proyecto — es lo que escribe `/orquesta:init` (la toma tal cual del AGENTS.md o CLAUDE.md). Funciona en tu máquina y no hace falta nada más.
 
 **Si el repo lo comparte un equipo** y no querés una ruta personal de tu disco en el archivo versionado (cada persona tiene el vault en otro lado), separalo en dos:
 
@@ -805,11 +805,11 @@ Al cerrar un PLAN, el documentador escribe en las carpetas configuradas (por def
    { "contexto": { "obsidian": { "carpeta_decisiones": "Proyectos/MiProyecto/Decisiones", "carpeta_handoffs": "Proyectos/MiProyecto/Decisiones" } } }
    ```
 
-`carpeta_decisiones`/`carpeta_handoffs` se resuelven así: si ya son una ruta absoluta, se usan tal cual; si no, y hay `vault_root` seteado, se resuelven contra el vault; si no hay ninguno de los dos, contra el repo (el default). **Ojo:** la forma relativa (`Proyectos/X/Decisiones`) solo tiene sentido con `vault_root`; sin él se resuelve contra el repo y apunta a una carpeta que no existe. Si el CLAUDE.md del proyecto declara otra carpeta que la que resuelve la config, `/orquesta:doctor` y `/orquesta:estado` te lo marcan. Así cada persona en el equipo apunta a su propio vault sin tocar el archivo compartido, y alguien sin vault de Obsidian simplemente sigue usando `docs/decisiones` dentro del repo. `contexto.obsidian.usar: false` apaga esto por completo (el arquitecto ni delega al documentador).
+`carpeta_decisiones`/`carpeta_handoffs` se resuelven así: si ya son una ruta absoluta, se usan tal cual; si no, y hay `vault_root` seteado, se resuelven contra el vault; si no hay ninguno de los dos, contra el repo (el default). **Ojo:** la forma relativa (`Proyectos/X/Decisiones`) solo tiene sentido con `vault_root`; sin él se resuelve contra el repo y apunta a una carpeta que no existe. Si el AGENTS.md/CLAUDE.md del proyecto declara otra carpeta que la que resuelve la config, `/orquesta:doctor` y `/orquesta:estado` te lo marcan. Así cada persona en el equipo apunta a su propio vault sin tocar el archivo compartido, y alguien sin vault de Obsidian simplemente sigue usando `docs/decisiones` dentro del repo. `contexto.obsidian.usar: false` apaga esto por completo (el arquitecto ni delega al documentador).
 
 Tu vault no tiene por qué separar "Handoffs" de "Decisiones": si tu estructura solo tiene una carpeta de decisiones (por ejemplo la que arma el skill `configurar-proyecto`, con `Decisiones/` y `Hallazgos/`, sin `Handoffs/`), apuntá `carpeta_handoffs` a la misma carpeta que `carpeta_decisiones` — se distinguen igual por el prefijo del nombre de archivo (`ADR-` vs `HANDOFF-`).
 
-**Sin escribir nada a mano:** si tu `CLAUDE.md` ya tiene la sección "Memoria del proyecto (Obsidian)" con `- Decisiones: <ruta absoluta>` (es lo que deja `configurar-proyecto`), `/orquesta:init` la lee **una vez** al crear la config del proyecto y pre-llena `carpeta_decisiones`/`carpeta_handoffs` con esa misma carpeta. Es la vía recomendada si preferís un archivo por proyecto: explícito, editable, y no tenés que tipear la ruta. Si la línea está abreviada (`...\Proyectos\X\Decisiones`) o no es absoluta, init no la copia y quedan los defaults — nunca adivina.
+**Sin escribir nada a mano:** si tu `AGENTS.md` (o `CLAUDE.md`) ya tiene la sección "Memoria del proyecto (Obsidian)" con `- Decisiones: <ruta absoluta>` (es lo que deja `configurar-proyecto`), `/orquesta:init` la lee **una vez** al crear la config del proyecto y pre-llena `carpeta_decisiones`/`carpeta_handoffs` con esa misma carpeta. Es la vía recomendada si preferís un archivo por proyecto: explícito, editable, y no tenés que tipear la ruta. Si la línea está abreviada (`...\Proyectos\X\Decisiones`) o no es absoluta, init no la copia y quedan los defaults — nunca adivina.
 
 **`docs/decisiones/ADR-20260908-export-csv-cierres.md`**
 ```markdown
@@ -949,7 +949,7 @@ Claude-Orquesta/
     ├── schemas/           reporte.schema.json · revision.schema.json
     ├── config/orquesta.defaults.json
     ├── ejemplos/          orquesta.json · orquesta-codex.json
-    ├── tests/             Test-Orquesta.ps1 (277 aserciones) · fake-codex.ps1
+    ├── tests/             Test-Orquesta.ps1 (283 aserciones) · fake-codex.ps1
     ├── README.md          ficha técnica del plugin
     └── CHANGELOG.md
 ```
@@ -972,6 +972,10 @@ Sin dependencias (ni Pester). Valida JSON de manifiestos y hooks, frontmatter de
 ## Changelog
 
 El detalle por versión vive en [`plugins/orquesta/CHANGELOG.md`](plugins/orquesta/CHANGELOG.md).
+
+### 2026-11-17 — 1.4.5: init lee la carpeta de Obsidian también del AGENTS.md
+- `/orquesta:init` pre-llena la carpeta de Obsidian desde el `AGENTS.md` del proyecto (lo que genera hoy `configurar-proyecto`) y, si no la encuentra ahí, desde el `CLAUDE.md`. Antes solo miraba el `CLAUDE.md` y en proyectos nuevos caía a los defaults.
+- `doctor` y `estado` marcan el desajuste con la config nombrando el archivo de donde salió la ruta.
 
 ### 2026-11-13 — 1.4.4: orquesta solo actúa donde vos lo prendés
 - La compuerta de delegación ya no bloquea subagentes ajenos en proyectos sin PLAN. Antes, cualquier delegación de 1200 caracteres o más se bloqueaba con instrucciones para arrancar el protocolo, y el modelo terminaba creando un PLAN que nadie pidió.

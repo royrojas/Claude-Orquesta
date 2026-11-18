@@ -12,7 +12,7 @@ plan: ../PLAN.md
 > Si algo ambiguo cambiaría el código, responde `BLOQUEADO` con la pregunta concreta y no adivina.
 
 ## Contexto mínimo
-<!-- 3-6 líneas: qué sistema, qué parte, por qué esta tarea existe. Convenciones que aplican (CLAUDE.md, capa de acceso a datos, naming, etc.). -->
+<!-- 3-6 líneas: qué sistema, qué parte, por qué esta tarea existe. Convenciones que aplican (AGENTS.md/CLAUDE.md, capa de acceso a datos, naming, etc.). -->
 
 ## Objetivo de la tarea
 <!-- Una frase verificable. -->

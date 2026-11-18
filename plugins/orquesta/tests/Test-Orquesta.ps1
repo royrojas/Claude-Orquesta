@@ -435,6 +435,27 @@ $r4 = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Initialize-O
 $gen3 = Get-Content $cfgPath -Raw -Encoding UTF8 | ConvertFrom-Json
 Assert ($LASTEXITCODE -eq 0 -and $null -eq $gen3.contexto.obsidian.PSObject.Properties['carpeta_decisiones'] -and $r4 -match 'docs/decisiones') "sin CLAUDE.md ni Obsidian ni graphify: init igual crea la config y deja las notas dentro del repo"
 Remove-Item $tmpInit -Recurse -Force -ErrorAction SilentlyContinue
+# configurar-proyecto genera AGENTS.md (más un CLAUDE.md shim '@AGENTS.md' en Claude Code viejo)
+New-Item -ItemType Directory -Path $tmpInit -Force | Out-Null
+Set-Content (Join-Path $tmpInit 'AGENTS.md') (@('# T', '', '## Memoria del proyecto (Obsidian)', '', "- Decisiones: ``$vaultDec$([IO.Path]::DirectorySeparatorChar)``") -join "`n") -Encoding UTF8
+Set-Content (Join-Path $tmpInit 'CLAUDE.md') '@AGENTS.md' -Encoding UTF8
+$doc5 = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Doctor-Orquesta.ps1') -Cwd $tmpInit 2>&1 | Out-String
+Assert ($doc5 -match 'AGENTS\.md del proyecto dice') "doctor marca el desajuste también cuando la carpeta está en AGENTS.md"
+$est5 = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Show-Estado.ps1') -Cwd $tmpInit 2>&1 | Out-String
+Assert ($est5 -match 'el AGENTS\.md dice') "Show-Estado nombra el AGENTS.md en el desajuste"
+$r5 = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Initialize-OrquestaConfig.ps1') -Cwd $tmpInit 2>&1 | Out-String
+$gen5 = Get-Content $cfgPath -Raw -Encoding UTF8 | ConvertFrom-Json
+Assert ($LASTEXITCODE -eq 0 -and $gen5.contexto.obsidian.carpeta_decisiones -eq $vaultDec -and $r5 -match 'pre-llenadas desde AGENTS\.md') "init toma la carpeta del AGENTS.md aunque haya un CLAUDE.md shim al lado"
+$doc6 = & $pwsh -NoProfile -NonInteractive -File (Join-Path $Scripts 'Doctor-Orquesta.ps1') -Cwd $tmpInit 2>&1 | Out-String
+Assert ($doc6 -notmatch 'del proyecto dice') "con la config tomada del AGENTS.md, doctor no marca desajuste"
+$otraDec = Join-Path ([IO.Path]::GetTempPath()) 'vault-y/Proyectos/T/Decisiones'
+Set-Content (Join-Path $tmpInit 'CLAUDE.md') "- Decisiones: ``$otraDec``" -Encoding UTF8
+$prec = & $pwsh -NoProfile -NonInteractive -Command ". '$Scripts/OrquestaCommon.ps1'; Get-ObsidianCarpetaDesdeInstrucciones -Cwd '$tmpInit' | ConvertTo-Json -Compress" | ConvertFrom-Json
+Assert ($prec.Archivo -eq 'AGENTS.md' -and $prec.Ruta -eq $vaultDec) "con la línea en AGENTS.md y en CLAUDE.md, manda AGENTS.md"
+Set-Content (Join-Path $tmpInit 'AGENTS.md') '# T sin memoria' -Encoding UTF8
+$prec = & $pwsh -NoProfile -NonInteractive -Command ". '$Scripts/OrquestaCommon.ps1'; Get-ObsidianCarpetaDesdeInstrucciones -Cwd '$tmpInit' | ConvertTo-Json -Compress" | ConvertFrom-Json
+Assert ($prec.Archivo -eq 'CLAUDE.md' -and $prec.Ruta -eq $otraDec) "un AGENTS.md sin la línea cae al CLAUDE.md"
+Remove-Item $tmpInit -Recurse -Force -ErrorAction SilentlyContinue
 
 Write-Host "`n== 19. Marcar-Tarea.ps1 (registro en una llamada) ==" -ForegroundColor Cyan
 $tmpMt = Join-Path ([IO.Path]::GetTempPath()) ("orquesta-mt-" + [guid]::NewGuid().ToString('n').Substring(0, 8))

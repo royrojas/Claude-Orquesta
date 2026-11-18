@@ -5,7 +5,7 @@ Un BRIEF es bueno cuando un trabajador que **no vio nada** de la conversación p
 ## Contexto mínimo (3-6 líneas)
 - [ ] Qué sistema y qué parte (proyecto de la solución, capa).
 - [ ] Por qué existe la tarea (una frase; evita "optimizaciones" bienintencionadas fuera de alcance).
-- [ ] Convenciones que aplican y dónde leerlas (`CLAUDE.md`, capa de datos, naming).
+- [ ] Convenciones que aplican y dónde leerlas (`AGENTS.md`/`CLAUDE.md`, capa de datos, naming).
 
 ## Contrato exacto (copiable, no descrito)
 - [ ] Firmas completas con tipos y namespaces. "Un método que devuelve los cierres" es una descripción; `Task<IReadOnlyList<CierreCajaDto>> ObtenerCierresAsync(DateOnly desde, DateOnly hasta, CancellationToken ct)` es un contrato.

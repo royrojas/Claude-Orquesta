@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.4.5 — 2026-11-17
+El skill `configurar-proyecto` pasó a generar `AGENTS.md` (lo leen Codex y Claude Code 2.1.281+) en vez
+de `CLAUDE.md`. `/orquesta:init`, `doctor` y `estado` solo buscaban la línea `- Decisiones:` en el
+`CLAUDE.md`, así que en esos proyectos init no pre-llenaba la carpeta de Obsidian.
+- **`Get-ObsidianCarpetaDesdeInstrucciones`** (antes `Get-ObsidianCarpetaDesdeClaudeMd`): busca primero en
+  `AGENTS.md` y después en `CLAUDE.md` (proyectos configurados antes, o un shim `@AGENTS.md` sin la línea), y
+  devuelve también de qué archivo la sacó. `Get-ObsidianDesajusteInstrucciones` igual.
+- init, doctor y estado nombran el archivo real en sus mensajes.
+- Agentes implementador y cartógrafo, plantilla de BRIEF y checklist: las reglas del proyecto pueden estar en
+  `AGENTS.md` o `CLAUDE.md`.
+- 6 aserciones nuevas (283): AGENTS.md con shim al lado, desajuste en doctor/estado, precedencia AGENTS.md
+  sobre CLAUDE.md y caída al CLAUDE.md si el AGENTS.md no tiene la línea.
+
 ## 1.4.4 — 2026-11-13
 orquesta se activaba en proyectos donde no se había pedido. Los skills no eran la causa
 (`disable-model-invocation` sigue vigente); lo eran la compuerta de delegación y los agentes

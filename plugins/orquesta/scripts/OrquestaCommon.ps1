@@ -266,35 +266,41 @@ function Resolve-ObsidianPath {
     return (Join-Path $Cwd $Valor)
 }
 
-function Get-ObsidianCarpetaDesdeClaudeMd {
+function Get-ObsidianCarpetaDesdeInstrucciones {
     <#
-      Busca en <Cwd>/CLAUDE.md una línea "- Decisiones: `<ruta>`" (la sección "Memoria del proyecto (Obsidian)"
-      que deja el skill configurar-proyecto). Devuelve la ruta solo si es absoluta y no está abreviada con "...";
-      en cualquier otro caso $null. Nunca adivina: lo usa Initialize-OrquestaConfig para pre-llenar la config
-      del proyecto una sola vez, no se parsea en cada corrida.
+      Busca en el archivo de instrucciones del proyecto una línea "- Decisiones: `<ruta>`" (la sección "Memoria del
+      proyecto (Obsidian)" que deja el skill configurar-proyecto): primero <Cwd>/AGENTS.md (lo que genera hoy) y
+      después <Cwd>/CLAUDE.md (proyectos configurados antes, o un shim "@AGENTS.md" sin la línea). Devuelve
+      @{ Ruta; Archivo } con la primera ruta absoluta y no abreviada con "..."; si no hay ninguna, $null. Nunca
+      adivina: lo usa Initialize-OrquestaConfig para pre-llenar la config del proyecto una sola vez, no se parsea
+      en cada corrida.
     #>
     param([string]$Cwd)
-    $md = Join-Path $Cwd 'CLAUDE.md'
-    if (-not (Test-Path -LiteralPath $md)) { return $null }
-    foreach ($l in (Get-Content -LiteralPath $md -Encoding UTF8)) {
-        if ($l -match '^\s*[-*]\s*Decisiones\s*:\s*`?([^`]+?)`?\s*$') {
-            $ruta = $Matches[1].Trim().TrimEnd('\', '/')
-            if ($ruta -notmatch '\.\.\.' -and [IO.Path]::IsPathRooted($ruta)) { return $ruta }
+    foreach ($archivo in 'AGENTS.md', 'CLAUDE.md') {
+        $md = Join-Path $Cwd $archivo
+        if (-not (Test-Path -LiteralPath $md)) { continue }
+        foreach ($l in (Get-Content -LiteralPath $md -Encoding UTF8)) {
+            if ($l -match '^\s*[-*]\s*Decisiones\s*:\s*`?([^`]+?)`?\s*$') {
+                $ruta = $Matches[1].Trim().TrimEnd('\', '/')
+                if ($ruta -notmatch '\.\.\.' -and [IO.Path]::IsPathRooted($ruta)) {
+                    return [pscustomobject]@{ Ruta = $ruta; Archivo = $archivo }
+                }
+            }
         }
     }
     return $null
 }
 
-function Get-ObsidianDesajusteClaudeMd {
+function Get-ObsidianDesajusteInstrucciones {
     <#
-      Solo diagnóstico: si el CLAUDE.md del proyecto declara una carpeta de decisiones absoluta DISTINTA de la que
-      resuelve la config, devuelve esa carpeta para que doctor/estado avisen. La config sigue mandando; esto no
-      cambia ninguna ruta. Devuelve $null si no hay CLAUDE.md, no hay línea usable, o coinciden.
+      Solo diagnóstico: si el AGENTS.md/CLAUDE.md del proyecto declara una carpeta de decisiones absoluta DISTINTA
+      de la que resuelve la config, devuelve @{ Ruta; Archivo } para que doctor/estado avisen. La config sigue
+      mandando; esto no cambia ninguna ruta. Devuelve $null si no hay línea usable o coinciden.
     #>
     param([string]$Cwd, [string]$RutaResuelta)
-    $md = Get-ObsidianCarpetaDesdeClaudeMd -Cwd $Cwd
+    $md = Get-ObsidianCarpetaDesdeInstrucciones -Cwd $Cwd
     if (-not $md) { return $null }
-    $a = ("$md" -replace '\\', '/').TrimEnd('/')
+    $a = ("$($md.Ruta)" -replace '\\', '/').TrimEnd('/')
     $b = ("$RutaResuelta" -replace '\\', '/').TrimEnd('/')
     if ($a -eq $b) { return $null }
     return $md

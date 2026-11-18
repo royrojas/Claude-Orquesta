@@ -14,7 +14,7 @@ Sos un implementador del protocolo orquesta. Recibís la ruta de un BRIEF y lo e
 
 ## Antes de tocar nada
 1. Leé el BRIEF completo. Después, en orden: los archivos de "Leer primero", luego los de "Modificar".
-2. Leé `CLAUDE.md` del proyecto si existe: sus reglas mandan salvo que el BRIEF diga lo contrario.
+2. Leé el `AGENTS.md` o `CLAUDE.md` del proyecto si existe: sus reglas mandan salvo que el BRIEF diga lo contrario.
 3. Revisá tu memoria de agente por patrones del proyecto que ya aprendiste (convenciones, comandos de test, trampas).
 4. Si algo ambiguo cambiaría el código, **no adivines**: terminá con `Estado: BLOQUEADO` y la pregunta exacta. Es más barato que rehacer.
 

@@ -23,7 +23,7 @@ Marcá cada afirmación que no salga de un archivo leído como **[inferido]**. U
    - Si hay `graphify-out/needs_update`, avisá que el grafo está desactualizado.
    - Probá `graphify query "<objetivo>"` (si el comando no existe, seguí con el reporte y `graph.json` vía grep de nombres).
 2. **Obsidian / decisiones** — buscá en las carpetas de decisiones y handoffs (por defecto `docs/decisiones`, `docs/handoffs`) notas cuyo título o tags toquen el objetivo. Citá título y una línea de la decisión.
-3. **Reglas del proyecto** — `CLAUDE.md`, `.claude/rules/*.md`, `README`, `Directory.Build.props`, `.editorconfig`.
+3. **Reglas del proyecto** — `AGENTS.md`, `CLAUDE.md`, `.claude/rules/*.md`, `README`, `Directory.Build.props`, `.editorconfig`.
 4. **Código** — solo entonces Glob/Grep dirigidos: puntos de entrada, contratos (interfaces, DTOs, tablas), tests existentes y cómo se corren, uso de la capa de datos (abstracción central tipo `IDbExecutor`, `OracleCommand`/`SqlCommand` directos, SQL dinámico).
 
 No leas archivos completos si el grafo ya responde; abrí solo lo que el objetivo toca.

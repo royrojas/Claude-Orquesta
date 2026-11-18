@@ -56,7 +56,7 @@ if ($cfg) {
     }
     Linea ($modelosRaros.Count -eq 0) "trabajadores configurados $(if ($usaCodex) { '(algunos en motor codex)' } else { '(todos en Claude)' })$(if ($modelosRaros) { ' — ' + ($modelosRaros -join '; ') })"
     if (-not (Test-Path -LiteralPath (Join-Path $Cwd '.claude/orquesta.json'))) {
-        $out.Add("- ○ config del proyecto: no hay .claude/orquesta.json (se usan los defaults del plugin). Para crear uno editable, pre-llenado desde tu CLAUDE.md: /orquesta:init")
+        $out.Add("- ○ config del proyecto: no hay .claude/orquesta.json (se usan los defaults del plugin). Para crear uno editable, pre-llenado desde tu AGENTS.md o CLAUDE.md: /orquesta:init")
     }
 }
 
@@ -92,9 +92,9 @@ if ($cfg) {
         $out.Add("- ○ Obsidian: desactivado (contexto.obsidian.usar: false)")
     } else {
         $dec = Resolve-ObsidianPath -Cwd $Cwd -Config $cfg -Valor (Get-Prop $cfg 'contexto.obsidian.carpeta_decisiones')
-        $enMd = Get-ObsidianDesajusteClaudeMd -Cwd $Cwd -RutaResuelta $dec
+        $enMd = Get-ObsidianDesajusteInstrucciones -Cwd $Cwd -RutaResuelta $dec
         if ($enMd) {
-            Linea $false "Obsidian: la config resuelve a ``$dec`` pero el CLAUDE.md del proyecto dice ``$enMd``" 'Corré /orquesta:init (toma la carpeta de Obsidian del CLAUDE.md y te pregunta antes de escribir) o poné contexto.obsidian.carpeta_decisiones en .claude/orquesta.json'
+            Linea $false "Obsidian: la config resuelve a ``$dec`` pero el $($enMd.Archivo) del proyecto dice ``$($enMd.Ruta)``" "Corré /orquesta:init (toma la carpeta de Obsidian del $($enMd.Archivo) y te pregunta antes de escribir) o poné contexto.obsidian.carpeta_decisiones en .claude/orquesta.json"
         } else {
             $out.Add("- $(if ($dec -and (Test-Path $dec)) { '✓' } else { '○' }) Obsidian: carpeta de decisiones ``$dec`` $(if ($dec -and (Test-Path $dec)) { 'existe' } else { 'aún no existe (se crea al cerrar el primer PLAN)' })")
         }
